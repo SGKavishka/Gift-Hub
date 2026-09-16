@@ -1,655 +1,651 @@
 "use client";
 
-import { type ChangeEvent, type FormEvent, useMemo, useState } from "react";
+/* eslint-disable @next/next/no-img-element */
+
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
+
+type Availability = "In Stock" | "Limited" | "Preorder";
+type ProductBadge = "NEW" | "POPULAR" | "SALE" | "BEST SELLER" | "CUSTOM";
 
 type Product = {
   id: string;
-  title: string;
+  name: string;
   category: string;
-  recipient: string;
-  occasion: string;
+  gender: string;
+  recipients: string[];
+  occasions: string[];
+  giftTypes: string[];
   price: number;
-  oldPrice?: number;
-  image: string;
-  badge?: string;
-  availability: "In Stock" | "Only a Few Left" | "Preorder";
+  compareAt?: number;
   rating: number;
   reviews: number;
-  shortDescription: string;
-  detailedDescription: string;
-  included: string[];
-  kind: "pack" | "item";
+  badge: ProductBadge;
+  availability: Availability;
+  image: string;
+  description: string;
+  details: string[];
+  createdAt: string;
+  popularity: number;
 };
 
 type CartItem = {
+  lineId: string;
   product: Product;
   quantity: number;
-};
-
-type GiftForm = {
-  recipientType: string;
-  occasion: string;
-  budget: string;
-  customBudget: string;
-  preferredItems: string;
-  favouriteColours: string;
-  specialRequests: string;
-  recipientName: string;
-  personalMessage: string;
-  deliveryDate: string;
-  photoName: string;
+  message?: string;
 };
 
 type CheckoutForm = {
   fullName: string;
-  mobile: string;
+  phone: string;
   email: string;
   address: string;
   city: string;
+  district: string;
   instructions: string;
-  recipientName: string;
-  giftMessage: string;
-  deliveryDate: string;
+  paymentMethod: string;
+};
+
+type ContactForm = {
+  name: string;
+  phone: string;
+  message: string;
+};
+
+type LastOrder = {
+  id: string;
+  customer: string;
+  total: number;
+  items: CartItem[];
   paymentMethod: string;
 };
 
 const whatsappNumber = "94771234567";
+const fallbackImage =
+  "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=900&q=80";
 
 const navItems = [
   ["Home", "home"],
   ["Shop", "shop"],
-  ["Gift Packs", "gift-packs"],
-  ["Build Your Gift", "build-your-gift"],
-  ["Occasions", "occasions"],
-  ["New Arrivals", "new-arrivals"],
-  ["About Us", "about-us"],
+  ["Categories", "categories"],
+  ["Gift Boxes", "gift-boxes"],
+  ["Custom Gift", "custom-gift"],
+  ["About", "about"],
   ["Contact", "contact"],
-];
+] as const;
 
-const categories = [
-  "Gifts for Her",
-  "Gifts for Him",
-  "Couple Gifts",
-  "Birthday Gifts",
-  "Anniversary Gifts",
-  "Best Friend Gifts",
-  "Family Gifts",
-  "Under Rs. 1,500",
-  "Under Rs. 2,500",
-  "Premium Gift Boxes",
-];
+const categoryCards = [
+  ["🎁", "Gift Items", "Curated little surprises"],
+  ["🧸", "Teddy Bears", "Cute plush picks"],
+  ["⌚", "Watches", "Everyday premium style"],
+  ["💎", "Jewelry", "Pretty keepsakes"],
+  ["📚", "Books", "Thoughtful reading gifts"],
+  ["🌹", "Flowers", "Romantic and fresh"],
+  ["💑", "Couple Gifts", "Matching memories"],
+  ["👦", "Gifts for Boys", "Useful and stylish"],
+  ["👧", "Gifts for Girls", "Soft and beautiful"],
+  ["👨‍👩‍👧", "Family Gifts", "Warm family hampers"],
+  ["🎂", "Birthday Gifts", "Ready for birthdays"],
+  ["💝", "Custom Gift Boxes", "Built around your budget"],
+] as const;
 
-const recipientOptions = [
-  "Girlfriend",
-  "Boyfriend",
-  "Wife",
-  "Husband",
-  "Friend",
-  "Mother",
-  "Father",
-  "Sister",
-  "Brother",
-  "Teacher",
-  "Colleague",
-  "Other",
-];
+const budgetOptions = [
+  { label: "Under LKR 1,000", min: 0, max: 1000 },
+  { label: "LKR 1,000-2,000", min: 1000, max: 2000 },
+  { label: "LKR 2,000-3,000", min: 2000, max: 3000 },
+  { label: "LKR 3,000-5,000", min: 3000, max: 5000 },
+  { label: "LKR 5,000+", min: 5000, max: 12000 },
+] as const;
 
+const recipientOptions = ["Boy", "Girl", "Couple", "Friend", "Family"] as const;
 const occasionOptions = [
   "Birthday",
   "Anniversary",
-  "Love",
-  "Congratulations",
-  "Thank You",
-  "Sorry",
-  "Graduation",
   "Valentine's Day",
-  "Mother's Day",
-  "Father's Day",
+  "Graduation",
+  "Wedding",
+  "Thank You",
   "Just Because",
+] as const;
+
+const sriLankanDistricts = [
+  "Colombo",
+  "Gampaha",
+  "Kalutara",
+  "Kandy",
+  "Galle",
+  "Matara",
+  "Kurunegala",
+  "Anuradhapura",
+  "Jaffna",
   "Other",
 ];
 
-const budgetOptions = [
-  "Rs. 1,000",
-  "Rs. 1,500",
-  "Rs. 2,000",
-  "Rs. 2,500",
-  "Rs. 3,000",
-  "Rs. 5,000",
-  "Rs. 7,500",
-  "Rs. 10,000",
-  "Custom Budget",
-];
-
-const allProducts: Product[] = [
+const products: Product[] = [
   {
-    id: "girl-gift-pack-1500",
-    title: "Girl Gift Pack",
-    category: "Gift Packs",
-    recipient: "Her",
-    occasion: "Birthday",
-    price: 1500,
-    image:
-      "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?auto=format&fit=crop&w=900&q=80",
-    badge: "Best Seller",
-    availability: "In Stock",
-    rating: 4.9,
-    reviews: 86,
-    shortDescription: "Small teddy, bracelet, chocolate, greeting card and gift box.",
-    detailedDescription:
-      "A sweet, ready-to-gift box for birthdays, friendship moments and simple surprises. Packed in a soft premium style with a cute handwritten-card feel.",
-    included: ["Small teddy", "Bracelet", "Chocolate", "Greeting card", "Gift box"],
-    kind: "pack",
-  },
-  {
-    id: "boy-gift-pack-2000",
-    title: "Boy Gift Pack",
-    category: "Gift Packs",
-    recipient: "Him",
-    occasion: "Just Because",
-    price: 2000,
-    image:
-      "https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=900&q=80",
-    badge: "New Arrival",
-    availability: "In Stock",
-    rating: 4.8,
-    reviews: 64,
-    shortDescription: "Watch, wallet, keytag, bracelet and premium gift box.",
-    detailedDescription:
-      "A practical and thoughtful gift pack for brothers, partners, friends and husbands with useful everyday accessories.",
-    included: ["Watch", "Wallet", "Keytag", "Bracelet", "Gift box"],
-    kind: "pack",
-  },
-  {
-    id: "couple-gift-pack-2500",
-    title: "Couple Gift Pack",
-    category: "Gift Packs",
-    recipient: "Couples",
-    occasion: "Anniversary",
-    price: 2500,
-    image:
-      "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=900&q=80",
-    badge: "Only a Few Left",
-    availability: "Only a Few Left",
-    rating: 4.9,
-    reviews: 112,
-    shortDescription: "Pair keytags, bracelets, teddy, couple card and chocolates.",
-    detailedDescription:
-      "A charming matching gift box for anniversaries, Valentine's surprises and couple milestones.",
-    included: ["2 keytags", "2 bracelets", "Small teddy", "Couple card", "Chocolates"],
-    kind: "pack",
-  },
-  {
-    id: "premium-memory-box",
-    title: "Premium Memory Box",
-    category: "Premium Gift Boxes",
-    recipient: "Family",
-    occasion: "Thank You",
-    price: 7500,
-    image:
-      "https://images.unsplash.com/photo-1577140917170-285929fb55b7?auto=format&fit=crop&w=900&q=80",
-    badge: "Premium",
-    availability: "Preorder",
-    rating: 5,
-    reviews: 41,
-    shortDescription: "Elegant keepsakes, flowers, card, chocolates and photo frame.",
-    detailedDescription:
-      "A polished gift box designed for milestone moments, family surprises and meaningful thank-you gifts.",
-    included: ["Photo frame", "Mini bouquet", "Greeting card", "Chocolates", "Premium box"],
-    kind: "pack",
-  },
-  {
-    id: "mini-teddy",
-    title: "Mini Teddy Bear",
+    id: "cute-teddy-bear",
+    name: "Cute Teddy Bear",
     category: "Teddy Bears",
-    recipient: "Her",
-    occasion: "Love",
-    price: 950,
-    image:
-      "https://images.unsplash.com/photo-1559454403-b8fb88521f11?auto=format&fit=crop&w=900&q=80",
-    badge: "Cute Pick",
-    availability: "In Stock",
-    rating: 4.7,
-    reviews: 37,
-    shortDescription: "Soft mini teddy for gift boxes and small surprises.",
-    detailedDescription:
-      "A soft, compact teddy that fits beautifully into custom gift boxes or works as a simple add-on gift.",
-    included: ["Mini teddy", "Ribbon wrap"],
-    kind: "item",
-  },
-  {
-    id: "classic-watch",
-    title: "Classic Everyday Watch",
-    category: "Watches",
-    recipient: "Him",
-    occasion: "Birthday",
-    price: 2400,
-    image:
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=80",
-    badge: "Best Seller",
-    availability: "Only a Few Left",
-    rating: 4.8,
-    reviews: 52,
-    shortDescription: "Minimal watch with premium everyday styling.",
-    detailedDescription:
-      "A clean, timeless watch that works well for boyfriends, husbands, brothers and friends.",
-    included: ["Watch", "Gift wrap option"],
-    kind: "item",
-  },
-  {
-    id: "gold-necklace",
-    title: "Dainty Gold Necklace",
-    category: "Jewellery",
-    recipient: "Her",
-    occasion: "Anniversary",
-    price: 1800,
-    image:
-      "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=80",
-    badge: "New Arrival",
-    availability: "In Stock",
-    rating: 4.8,
-    reviews: 48,
-    shortDescription: "Elegant necklace for soft, thoughtful gifting.",
-    detailedDescription:
-      "A subtle jewellery piece that feels premium while staying affordable for everyday celebrations.",
-    included: ["Necklace", "Mini pouch", "Care card"],
-    kind: "item",
-  },
-  {
-    id: "couple-bracelets",
-    title: "Matching Couple Bracelets",
-    category: "Bracelets",
-    recipient: "Couples",
-    occasion: "Love",
-    price: 1250,
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=900&q=80",
-    badge: "Sale",
-    availability: "In Stock",
-    rating: 4.7,
-    reviews: 44,
-    shortDescription: "Simple matching bracelets for two.",
-    detailedDescription:
-      "A cute couple add-on for anniversary boxes, love gifts and Valentine's Day surprises.",
-    included: ["2 bracelets", "Gift pouch"],
-    kind: "item",
-  },
-  {
-    id: "cute-stationery-set",
-    title: "Cute Stationery Set",
-    category: "Stationery",
-    recipient: "Friend",
-    occasion: "Graduation",
-    price: 1350,
-    image:
-      "https://images.unsplash.com/photo-1586953208448-b95a79798f07?auto=format&fit=crop&w=900&q=80",
-    availability: "In Stock",
-    rating: 4.6,
-    reviews: 29,
-    shortDescription: "Notebook, cute pen, stickers and gift-ready packing.",
-    detailedDescription:
-      "A useful and aesthetic stationery bundle for students, teachers, friends and colleagues.",
-    included: ["Notebook", "Cute pen", "Sticker sheet", "Paper bag"],
-    kind: "item",
-  },
-  {
-    id: "mini-candle",
-    title: "Mini Scented Candle",
-    category: "Mini Candles",
-    recipient: "Family",
-    occasion: "Thank You",
-    price: 850,
-    image:
-      "https://images.unsplash.com/photo-1602874801007-bd458bb1b8b6?auto=format&fit=crop&w=900&q=80",
-    availability: "In Stock",
-    rating: 4.7,
-    reviews: 33,
-    shortDescription: "A soft scented candle for cozy gift boxes.",
-    detailedDescription:
-      "Adds a warm and thoughtful feel to customized gift boxes for family, friends and teachers.",
-    included: ["Mini candle", "Safety card"],
-    kind: "item",
-  },
-  {
-    id: "photo-frame",
-    title: "Minimal Photo Frame",
-    category: "Photo Frames",
-    recipient: "Family",
-    occasion: "Anniversary",
-    price: 1200,
-    image:
-      "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=900&q=80",
-    badge: "Memory Gift",
-    availability: "In Stock",
-    rating: 4.6,
-    reviews: 24,
-    shortDescription: "Small photo frame for personal gift moments.",
-    detailedDescription:
-      "A lovely keepsake for printed photos, relationship memories and family celebrations.",
-    included: ["Photo frame", "Gift wrap"],
-    kind: "item",
-  },
-  {
-    id: "mini-bouquet",
-    title: "Mini Artificial Bouquet",
-    category: "Artificial Flowers",
-    recipient: "Her",
-    occasion: "Congratulations",
-    price: 1600,
-    image:
-      "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=900&q=80",
-    badge: "New Arrival",
-    availability: "In Stock",
-    rating: 4.8,
-    reviews: 58,
-    shortDescription: "Long-lasting mini bouquet for gift boxes and hand gifts.",
-    detailedDescription:
-      "A pretty bouquet add-on that photographs beautifully and stays fresh-looking for longer.",
-    included: ["Mini bouquet", "Ribbon", "Message tag"],
-    kind: "item",
-  },
-  {
-    id: "compact-wallet",
-    title: "Compact Wallet",
-    category: "Wallets",
-    recipient: "Him",
-    occasion: "Birthday",
-    price: 1900,
-    image:
-      "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=900&q=80",
-    availability: "Only a Few Left",
-    rating: 4.7,
-    reviews: 36,
-    shortDescription: "A neat wallet for practical everyday gifting.",
-    detailedDescription:
-      "A simple, useful gift that pairs well with watches, bracelets and keytags.",
-    included: ["Wallet", "Gift sleeve"],
-    kind: "item",
-  },
-  {
-    id: "chocolate-gift",
-    title: "Chocolate Treat Pack",
-    category: "Chocolate Gifts",
-    recipient: "Friend",
-    occasion: "Just Because",
-    price: 1100,
-    image:
-      "https://images.unsplash.com/photo-1481391319762-47dff72954d9?auto=format&fit=crop&w=900&q=80",
-    badge: "Sweet Add-on",
-    availability: "In Stock",
+    gender: "Girls",
+    recipients: ["Girl", "Friend"],
+    occasions: ["Birthday", "Valentine's Day", "Just Because"],
+    giftTypes: ["soft toy", "cute", "plush", "teddy"],
+    price: 2500,
+    compareAt: 2900,
     rating: 4.9,
-    reviews: 73,
-    shortDescription: "Assorted chocolates packed as a cute treat bundle.",
-    detailedDescription:
-      "A sweet addition for birthdays, apologies, thank-you gifts and customized boxes.",
-    included: ["Assorted chocolates", "Mini card"],
-    kind: "item",
+    reviews: 124,
+    badge: "BEST SELLER",
+    availability: "In Stock",
+    image:
+      "https://images.unsplash.com/photo-1559454403-b8fb88521f11?auto=format&fit=crop&w=900&q=82",
+    description: "A soft, photo-ready teddy for birthdays, apologies and sweet surprises.",
+    details: ["Soft plush finish", "Ribbon wrapping", "Message tag included"],
+    createdAt: "2026-08-24",
+    popularity: 98,
   },
   {
-    id: "custom-budget-box",
-    title: "Custom Budget Gift Box",
-    category: "Customized Gifts",
-    recipient: "Everyone",
-    occasion: "Other",
-    price: 3000,
+    id: "rose-memory-box",
+    name: "Rose Memory Gift Box",
+    category: "Gift Items",
+    gender: "Everyone",
+    recipients: ["Girl", "Couple", "Friend"],
+    occasions: ["Anniversary", "Valentine's Day", "Birthday"],
+    giftTypes: ["gift box", "flowers", "chocolate", "romantic"],
+    price: 3900,
+    compareAt: 4500,
+    rating: 4.8,
+    reviews: 88,
+    badge: "POPULAR",
+    availability: "Limited",
     image:
-      "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=900&q=80",
-    badge: "Customize",
+      "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=900&q=82",
+    description: "A polished box with keepsakes, roses, chocolates and a personal note.",
+    details: ["Artificial rose arrangement", "Mini chocolates", "Premium box", "Greeting card"],
+    createdAt: "2026-07-14",
+    popularity: 94,
+  },
+  {
+    id: "minimal-black-watch",
+    name: "Minimal Black Watch",
+    category: "Watches",
+    gender: "Boys",
+    recipients: ["Boy", "Friend", "Family"],
+    occasions: ["Birthday", "Graduation", "Thank You"],
+    giftTypes: ["watch", "practical", "premium", "accessory"],
+    price: 3200,
+    rating: 4.7,
+    reviews: 61,
+    badge: "NEW",
+    availability: "In Stock",
+    image:
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=82",
+    description: "A clean everyday watch for brothers, partners, friends and husbands.",
+    details: ["Minimal dial", "Gift sleeve", "Care card"],
+    createdAt: "2026-09-04",
+    popularity: 76,
+  },
+  {
+    id: "dainty-gold-necklace",
+    name: "Dainty Gold Necklace",
+    category: "Jewelry",
+    gender: "Girls",
+    recipients: ["Girl", "Friend"],
+    occasions: ["Anniversary", "Birthday", "Wedding"],
+    giftTypes: ["jewelry", "necklace", "keepsake", "premium"],
+    price: 2100,
+    compareAt: 2600,
+    rating: 4.8,
+    reviews: 77,
+    badge: "SALE",
+    availability: "In Stock",
+    image:
+      "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=82",
+    description: "An elegant necklace that feels premium while staying affordable.",
+    details: ["Gift pouch", "Care card", "Ribbon wrap"],
+    createdAt: "2026-06-10",
+    popularity: 86,
+  },
+  {
+    id: "book-lover-bundle",
+    name: "Book Lover Bundle",
+    category: "Books",
+    gender: "Everyone",
+    recipients: ["Friend", "Boy", "Girl"],
+    occasions: ["Graduation", "Birthday", "Thank You"],
+    giftTypes: ["book", "stationery", "study", "meaningful"],
+    price: 1800,
+    rating: 4.6,
+    reviews: 39,
+    badge: "NEW",
+    availability: "In Stock",
+    image:
+      "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=900&q=82",
+    description: "A cozy reading bundle with a notebook, bookmark and gift wrapping.",
+    details: ["Lifestyle book", "Bookmark", "Mini notebook", "Paper bag"],
+    createdAt: "2026-09-08",
+    popularity: 67,
+  },
+  {
+    id: "fresh-rose-bouquet",
+    name: "Fresh Rose Bouquet",
+    category: "Flowers",
+    gender: "Everyone",
+    recipients: ["Girl", "Couple", "Family"],
+    occasions: ["Valentine's Day", "Anniversary", "Wedding"],
+    giftTypes: ["flowers", "romantic", "bouquet", "photo-ready"],
+    price: 2800,
+    rating: 4.9,
+    reviews: 103,
+    badge: "POPULAR",
     availability: "Preorder",
+    image:
+      "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=900&q=82",
+    description: "A beautiful bouquet for love notes, anniversaries and wedding wishes.",
+    details: ["Fresh or artificial option", "Ribbon wrap", "Message card"],
+    createdAt: "2026-05-20",
+    popularity: 89,
+  },
+  {
+    id: "couple-promise-bracelets",
+    name: "Couple Promise Bracelets",
+    category: "Couple Gifts",
+    gender: "Couples",
+    recipients: ["Couple"],
+    occasions: ["Anniversary", "Valentine's Day", "Just Because"],
+    giftTypes: ["couple", "bracelet", "matching", "love"],
+    price: 1600,
+    compareAt: 1900,
+    rating: 4.7,
+    reviews: 58,
+    badge: "SALE",
+    availability: "In Stock",
+    image:
+      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=900&q=82",
+    description: "A matching pair gift for anniversaries, love boxes and little promises.",
+    details: ["Two bracelets", "Gift pouch", "Couple note card"],
+    createdAt: "2026-06-28",
+    popularity: 81,
+  },
+  {
+    id: "boys-everyday-gift-set",
+    name: "Boys Everyday Gift Set",
+    category: "Gifts for Boys",
+    gender: "Boys",
+    recipients: ["Boy", "Friend"],
+    occasions: ["Birthday", "Graduation", "Just Because"],
+    giftTypes: ["wallet", "watch", "keytag", "useful"],
+    price: 4200,
+    rating: 4.8,
+    reviews: 72,
+    badge: "BEST SELLER",
+    availability: "Limited",
+    image:
+      "https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=900&q=82",
+    description: "Useful, stylish essentials packed as a clean premium gift set.",
+    details: ["Wallet", "Keytag", "Bracelet", "Gift box"],
+    createdAt: "2026-04-12",
+    popularity: 91,
+  },
+  {
+    id: "girls-glow-gift-set",
+    name: "Girls Glow Gift Set",
+    category: "Gifts for Girls",
+    gender: "Girls",
+    recipients: ["Girl", "Friend"],
+    occasions: ["Birthday", "Thank You", "Just Because"],
+    giftTypes: ["beauty", "cute", "jewelry", "self care"],
+    price: 3600,
+    rating: 4.9,
+    reviews: 97,
+    badge: "POPULAR",
+    availability: "In Stock",
+    image:
+      "https://images.unsplash.com/photo-1607344645866-009c320b63e0?auto=format&fit=crop&w=900&q=82",
+    description: "A soft self-care gift box with pretty extras and thoughtful packing.",
+    details: ["Mini candle", "Jewelry pouch", "Chocolate", "Greeting card"],
+    createdAt: "2026-07-30",
+    popularity: 93,
+  },
+  {
+    id: "family-sweet-hamper",
+    name: "Family Sweet Hamper",
+    category: "Family Gifts",
+    gender: "Family",
+    recipients: ["Family"],
+    occasions: ["Thank You", "Wedding", "Just Because"],
+    giftTypes: ["hamper", "family", "snacks", "premium"],
+    price: 5200,
+    rating: 4.8,
+    reviews: 46,
+    badge: "NEW",
+    availability: "Preorder",
+    image:
+      "https://images.unsplash.com/photo-1577140917170-285929fb55b7?auto=format&fit=crop&w=900&q=82",
+    description: "A warm hamper for parents, relatives, hosts and family celebrations.",
+    details: ["Assorted sweets", "Tea-time treats", "Keepsake card", "Hamper wrap"],
+    createdAt: "2026-09-01",
+    popularity: 70,
+  },
+  {
+    id: "birthday-surprise-box",
+    name: "Birthday Surprise Box",
+    category: "Birthday Gifts",
+    gender: "Everyone",
+    recipients: ["Boy", "Girl", "Friend", "Family"],
+    occasions: ["Birthday"],
+    giftTypes: ["birthday", "surprise", "box", "balloon"],
+    price: 3000,
+    compareAt: 3500,
+    rating: 4.9,
+    reviews: 142,
+    badge: "BEST SELLER",
+    availability: "In Stock",
+    image:
+      "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=900&q=82",
+    description: "A cheerful ready-made birthday box with sweets, decor and a card.",
+    details: ["Mini decor", "Chocolate", "Card", "Wrapped box"],
+    createdAt: "2026-03-01",
+    popularity: 100,
+  },
+  {
+    id: "custom-budget-gift-box",
+    name: "Custom Budget Gift Box",
+    category: "Custom Gift Boxes",
+    gender: "Everyone",
+    recipients: ["Boy", "Girl", "Couple", "Friend", "Family"],
+    occasions: ["Birthday", "Anniversary", "Valentine's Day", "Graduation", "Wedding", "Thank You", "Just Because"],
+    giftTypes: ["custom", "budget", "curated", "personal"],
+    price: 1000,
     rating: 5,
-    reviews: 95,
-    shortDescription: "Tell us your budget, occasion and preferences.",
-    detailedDescription:
-      "Our signature service. Share the recipient, budget, colours and message, and we curate a beautiful box for you.",
-    included: ["Gift consultation", "Curated items", "Personal card", "Gift box"],
-    kind: "pack",
+    reviews: 156,
+    badge: "CUSTOM",
+    availability: "Preorder",
+    image:
+      "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=900&q=82",
+    description: "Tell us your budget, recipient and occasion. We create the gift.",
+    details: ["Gift consultation", "Curated items", "Personal note", "Beautiful packing"],
+    createdAt: "2026-01-01",
+    popularity: 99,
+  },
+  {
+    id: "graduation-keepsake-box",
+    name: "Graduation Keepsake Box",
+    category: "Gift Items",
+    gender: "Everyone",
+    recipients: ["Boy", "Girl", "Friend", "Family"],
+    occasions: ["Graduation"],
+    giftTypes: ["graduation", "keepsake", "photo frame", "stationery"],
+    price: 4700,
+    rating: 4.8,
+    reviews: 32,
+    badge: "NEW",
+    availability: "Limited",
+    image:
+      "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=900&q=82",
+    description: "A milestone gift with keepsakes, stationery and a memory card.",
+    details: ["Photo frame", "Notebook", "Pen", "Congratulation card"],
+    createdAt: "2026-08-18",
+    popularity: 73,
+  },
+  {
+    id: "wedding-blessing-set",
+    name: "Wedding Blessing Set",
+    category: "Family Gifts",
+    gender: "Couples",
+    recipients: ["Couple", "Family"],
+    occasions: ["Wedding", "Anniversary"],
+    giftTypes: ["wedding", "home", "keepsake", "premium"],
+    price: 6800,
+    rating: 4.7,
+    reviews: 27,
+    badge: "POPULAR",
+    availability: "Preorder",
+    image:
+      "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=900&q=82",
+    description: "A tasteful keepsake set for weddings, home blessings and anniversaries.",
+    details: ["Photo frame", "Mini bouquet", "Greeting card", "Premium box"],
+    createdAt: "2026-05-01",
+    popularity: 69,
+  },
+  {
+    id: "thank-you-candle-set",
+    name: "Thank You Candle Set",
+    category: "Gift Items",
+    gender: "Everyone",
+    recipients: ["Friend", "Family"],
+    occasions: ["Thank You", "Just Because"],
+    giftTypes: ["candle", "calm", "teacher", "gratitude"],
+    price: 1250,
+    rating: 4.6,
+    reviews: 44,
+    badge: "SALE",
+    availability: "In Stock",
+    image:
+      "https://images.unsplash.com/photo-1602874801007-bd458bb1b8b6?auto=format&fit=crop&w=900&q=82",
+    description: "A small calm gift for teachers, friends, hosts and family members.",
+    details: ["Mini candle", "Thank-you tag", "Ribbon wrap"],
+    createdAt: "2026-02-14",
+    popularity: 62,
+  },
+  {
+    id: "valentine-love-box",
+    name: "Valentine Love Box",
+    category: "Couple Gifts",
+    gender: "Couples",
+    recipients: ["Couple"],
+    occasions: ["Valentine's Day", "Anniversary"],
+    giftTypes: ["valentine", "chocolate", "couple", "romantic"],
+    price: 4500,
+    compareAt: 5100,
+    rating: 5,
+    reviews: 111,
+    badge: "POPULAR",
+    availability: "In Stock",
+    image:
+      "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=900&q=82",
+    description: "A romantic box with couple keepsakes, sweets and a message card.",
+    details: ["Couple bracelets", "Chocolate", "Mini teddy", "Love card"],
+    createdAt: "2026-01-30",
+    popularity: 97,
   },
 ];
 
-const giftPackCollections = [
-  {
-    title: "For Her",
-    description: "Teddies, jewellery, flowers, candles and soft keepsakes.",
-    productIds: ["girl-gift-pack-1500", "gold-necklace", "mini-bouquet"],
-  },
-  {
-    title: "For Him",
-    description: "Watches, wallets, keytags, bracelets and useful accessories.",
-    productIds: ["boy-gift-pack-2000", "classic-watch", "compact-wallet"],
-  },
-  {
-    title: "For Couples",
-    description: "Matching pair gifts, couple cards and sweet memory boxes.",
-    productIds: ["couple-gift-pack-2500", "couple-bracelets", "chocolate-gift"],
-  },
-  {
-    title: "Birthday Packs",
-    description: "Ready-to-surprise birthday bundles for every budget.",
-    productIds: ["girl-gift-pack-1500", "boy-gift-pack-2000", "mini-teddy"],
-  },
-  {
-    title: "Anniversary Packs",
-    description: "Elegant boxes for partners, spouses and relationship moments.",
-    productIds: ["couple-gift-pack-2500", "gold-necklace", "photo-frame"],
-  },
-  {
-    title: "Best Friend Packs",
-    description: "Cute, casual and thoughtful picks for friendship days.",
-    productIds: ["cute-stationery-set", "chocolate-gift", "mini-candle"],
-  },
-  {
-    title: "Family Gift Packs",
-    description: "Warm, respectful gifts for parents, siblings and relatives.",
-    productIds: ["premium-memory-box", "photo-frame", "mini-candle"],
-  },
-  {
-    title: "Budget Gift Boxes",
-    description: "Affordable boxes under Rs. 1,500 and Rs. 2,500.",
-    productIds: ["girl-gift-pack-1500", "couple-bracelets", "chocolate-gift"],
-  },
-  {
-    title: "Premium Gift Boxes",
-    description: "Elevated presentation for milestone celebrations.",
-    productIds: ["premium-memory-box", "custom-budget-box", "couple-gift-pack-2500"],
-  },
-];
+const reviews = [
+  ["Nethmi", "The gift box was beautiful and exactly what I wanted. Thank you!", 5],
+  ["Kavindu", "I told them my budget and they made a perfect birthday surprise.", 5],
+  ["Ayesha", "Very neat packing, friendly WhatsApp updates and fast delivery.", 5],
+  ["Dinuka", "Looks premium but still affordable. The custom card was lovely.", 5],
+] as const;
 
-const instagramImages = [
-  {
-    title: "Gift boxes",
-    image:
-      "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=700&q=80",
-  },
-  {
-    title: "Birthday gifts",
-    image:
-      "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=700&q=80",
-  },
-  {
-    title: "Couple gifts",
-    image:
-      "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=700&q=80",
-  },
-  {
-    title: "Customized orders",
-    image:
-      "https://images.unsplash.com/photo-1607344645866-009c320b63e0?auto=format&fit=crop&w=700&q=80",
-  },
-  {
-    title: "Happy customers",
-    image:
-      "https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=700&q=80",
-  },
-  {
-    title: "New products",
-    image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=80",
-  },
-];
+const orderSteps = ["Order Placed", "Confirmed", "Preparing", "Out for Delivery", "Delivered"] as const;
 
-const testimonials = [
-  "Beautiful packaging and very friendly service.",
-  "Perfect gift for my girlfriend. Highly recommended.",
-  "I only gave them my budget and they created an amazing gift box.",
-  "Fast delivery and beautiful products.",
-];
+const formatPrice = (amount: number) => `LKR ${amount.toLocaleString("en-LK")}`;
 
-const trustItems = [
-  ["Islandwide Delivery", "Fast and reliable delivery across Sri Lanka."],
-  ["Beautifully Packed", "Every gift is carefully prepared and packed."],
-  ["Affordable Gift Options", "Gift ideas for different budgets."],
-  ["Custom Gift Boxes", "Tell us your budget and we create something special."],
-  ["Friendly Support", "Easy assistance through WhatsApp and social media."],
-];
+const sanitizeText = (value: string) =>
+  value.trim().replace(/[<>]/g, "").replace(/\s+/g, " ").slice(0, 500);
 
-const emptyGiftForm: GiftForm = {
-  recipientType: "Girlfriend",
-  occasion: "Birthday",
-  budget: "Rs. 2,000",
-  customBudget: "",
-  preferredItems: "",
-  favouriteColours: "",
-  specialRequests: "",
-  recipientName: "",
-  personalMessage: "",
-  deliveryDate: "",
-  photoName: "",
-};
+const buildWhatsAppUrl = (message: string) =>
+  `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 
-const emptyCheckoutForm: CheckoutForm = {
-  fullName: "",
-  mobile: "",
-  email: "",
-  address: "",
-  city: "",
-  instructions: "",
-  recipientName: "",
-  giftMessage: "",
-  deliveryDate: "",
-  paymentMethod: "Cash on Delivery",
-};
-
-const formatPrice = (amount: number) => `Rs. ${amount.toLocaleString("en-LK")}`;
-
-function buildWhatsAppUrl(message: string) {
-  return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
-}
-
-function openWhatsApp(message: string) {
-  window.open(buildWhatsAppUrl(message), "_blank", "noopener,noreferrer");
-}
+const productById = new Map(products.map((product) => [product.id, product]));
 
 export default function Home() {
-  const [query, setQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [wishlist, setWishlist] = useState<Set<string>>(new Set());
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [savedForLater, setSavedForLater] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [selectedImage, setSelectedImage] = useState("");
-  const [quickQuantity, setQuickQuantity] = useState(1);
-  const [giftForm, setGiftForm] = useState<GiftForm>(emptyGiftForm);
-  const [giftSubmitted, setGiftSubmitted] = useState(false);
-  const [promoCode, setPromoCode] = useState("");
-  const [promoApplied, setPromoApplied] = useState(false);
-  const [checkoutForm, setCheckoutForm] = useState<CheckoutForm>(emptyCheckoutForm);
-  const [orderSuccess, setOrderSuccess] = useState(false);
-  const [newsletterEmail, setNewsletterEmail] = useState("");
-  const [newsletterDone, setNewsletterDone] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({
     category: "All",
-    recipient: "All",
-    occasion: "All",
     price: "All",
+    gender: "All",
+    occasion: "All",
+    rating: "All",
     availability: "All",
   });
-  const [sort, setSort] = useState("Newest");
+  const [sort, setSort] = useState("Popular");
+  const [wishlist, setWishlist] = useState<Set<string>>(new Set());
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [quickQuantity, setQuickQuantity] = useState(1);
+  const [builderBudget, setBuilderBudget] = useState(budgetOptions[2].label);
+  const [builderRecipient, setBuilderRecipient] = useState<(typeof recipientOptions)[number]>("Girl");
+  const [builderOccasion, setBuilderOccasion] = useState<(typeof occasionOptions)[number]>("Birthday");
+  const [builderItems, setBuilderItems] = useState<Set<string>>(new Set(["thank-you-candle-set"]));
+  const [builderMessage, setBuilderMessage] = useState("");
+  const [builderStatus, setBuilderStatus] = useState<"idle" | "success" | "error">("idle");
+  const [finder, setFinder] = useState({
+    recipient: "Friend",
+    budget: "LKR 2,000-3,000",
+    occasion: "Birthday",
+    style: "cute",
+  });
+  const [finderUsed, setFinderUsed] = useState(false);
+  const [checkoutForm, setCheckoutForm] = useState<CheckoutForm>({
+    fullName: "",
+    phone: "",
+    email: "",
+    address: "",
+    city: "",
+    district: "",
+    instructions: "",
+    paymentMethod: "Cash on Delivery",
+  });
+  const [checkoutErrors, setCheckoutErrors] = useState<Record<string, string>>({});
+  const [lastOrder, setLastOrder] = useState<LastOrder | null>(null);
+  const [trackInput, setTrackInput] = useState("");
+  const [trackingStatus, setTrackingStatus] = useState<"idle" | "found" | "error">("idle");
+  const [accountTab, setAccountTab] = useState("Profile");
+  const [contactForm, setContactForm] = useState<ContactForm>({ name: "", phone: "", message: "" });
+  const [contactStatus, setContactStatus] = useState<"idle" | "success" | "error">("idle");
 
+  useEffect(() => {
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+
+      try {
+        const storedWishlist = JSON.parse(localStorage.getItem("thashy-wishlist") || "[]") as string[];
+        const storedCart = JSON.parse(localStorage.getItem("thashy-cart") || "[]") as CartItem[];
+        setWishlist(new Set(storedWishlist.filter((id) => productById.has(id))));
+        setCart(Array.isArray(storedCart) ? storedCart : []);
+      } catch {
+        setWishlist(new Set());
+        setCart([]);
+      } finally {
+        setHydrated(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem("thashy-wishlist", JSON.stringify([...wishlist]));
+  }, [hydrated, wishlist]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem("thashy-cart", JSON.stringify(cart));
+  }, [cart, hydrated]);
+
+  const categoryOptions = ["All", ...categoryCards.map((category) => category[1])];
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const deliveryCharge = cart.length === 0 ? 0 : subtotal >= 5000 ? 0 : 450;
-  const discount = promoApplied ? Math.round(subtotal * 0.1) : 0;
-  const total = Math.max(0, subtotal + deliveryCharge - discount);
-
-  const categoryOptions = ["All", ...Array.from(new Set(allProducts.map((product) => product.category)))];
-  const recipientFilterOptions = ["All", "Her", "Him", "Couples", "Friend", "Family", "Everyone"];
-  const occasionFilterOptions = ["All", ...occasionOptions.filter((option) => option !== "Other")];
-
-  const popularPacks = allProducts.filter((product) =>
-    ["girl-gift-pack-1500", "boy-gift-pack-2000", "couple-gift-pack-2500"].includes(product.id),
+  const deliveryFee = cart.length === 0 || subtotal >= 5000 ? 0 : 450;
+  const total = subtotal + deliveryFee;
+  const wishlistProducts = products.filter((product) => wishlist.has(product.id));
+  const activeBudget = budgetOptions.find((option) => option.label === builderBudget) ?? budgetOptions[2];
+  const selectedBuilderProducts = products.filter((product) => builderItems.has(product.id));
+  const builderTotal = selectedBuilderProducts.reduce((sum, product) => sum + product.price, 0);
+  const remainingBudget = Math.max(0, activeBudget.max - builderTotal);
+  const customBoxItems = products.filter(
+    (product) =>
+      product.price <= activeBudget.max &&
+      (product.recipients.includes(builderRecipient) || product.recipients.includes("Friend") || product.gender === "Everyone") &&
+      (product.occasions.includes(builderOccasion) || product.category === "Custom Gift Boxes"),
   );
 
-  const cuteThings = allProducts.filter((product) => product.kind === "item").slice(0, 8);
-  const newArrivals = allProducts.filter((product) => product.badge === "New Arrival");
-  const relatedProducts = selectedProduct
-    ? allProducts
-        .filter((product) => product.category === selectedProduct.category && product.id !== selectedProduct.id)
-        .slice(0, 3)
-    : [];
-
   const filteredProducts = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    const priceMatches = (price: number) => {
-      if (filters.price === "Under Rs. 1,500") return price <= 1500;
-      if (filters.price === "Rs. 1,500 - Rs. 2,500") return price >= 1500 && price <= 2500;
-      if (filters.price === "Rs. 2,500 - Rs. 5,000") return price >= 2500 && price <= 5000;
-      if (filters.price === "Above Rs. 5,000") return price > 5000;
+    const search = query.trim().toLowerCase();
+    const matchesPrice = (price: number) => {
+      if (filters.price === "Under LKR 1,000") return price < 1000;
+      if (filters.price === "LKR 1,000-2,000") return price >= 1000 && price <= 2000;
+      if (filters.price === "LKR 2,000-3,000") return price >= 2000 && price <= 3000;
+      if (filters.price === "LKR 3,000-5,000") return price >= 3000 && price <= 5000;
+      if (filters.price === "LKR 5,000+") return price >= 5000;
       return true;
     };
 
-    const matches = allProducts.filter((product) => {
-      const text = [
-        product.title,
+    const matchesGender = (product: Product) =>
+      filters.gender === "All" || product.gender === filters.gender || product.recipients.includes(filters.gender);
+
+    const results = products.filter((product) => {
+      const searchableText = [
+        product.name,
         product.category,
-        product.recipient,
-        product.occasion,
-        product.shortDescription,
-        ...product.included,
+        product.gender,
+        product.description,
+        ...product.recipients,
+        ...product.occasions,
+        ...product.giftTypes,
+        ...product.details,
       ]
         .join(" ")
         .toLowerCase();
 
       return (
-        (!normalizedQuery || text.includes(normalizedQuery)) &&
+        (!search || searchableText.includes(search)) &&
         (filters.category === "All" || product.category === filters.category) &&
-        (filters.recipient === "All" || product.recipient === filters.recipient) &&
-        (filters.occasion === "All" || product.occasion === filters.occasion) &&
-        (filters.availability === "All" || product.availability === filters.availability) &&
-        priceMatches(product.price)
+        matchesPrice(product.price) &&
+        matchesGender(product) &&
+        (filters.occasion === "All" || product.occasions.includes(filters.occasion)) &&
+        (filters.rating === "All" || product.rating >= Number(filters.rating)) &&
+        (filters.availability === "All" || product.availability === filters.availability)
       );
     });
 
-    return [...matches].sort((a, b) => {
-      if (sort === "Most Popular") return b.reviews - a.reviews;
-      if (sort === "Best Selling") return b.rating * b.reviews - a.rating * a.reviews;
-      if (sort === "Price Low to High") return a.price - b.price;
-      if (sort === "Price High to Low") return b.price - a.price;
-      return b.id.localeCompare(a.id);
+    return results.sort((a, b) => {
+      if (sort === "Newest") return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+      if (sort === "Price: Low to High") return a.price - b.price;
+      if (sort === "Price: High to Low") return b.price - a.price;
+      if (sort === "Best Rated") return b.rating - a.rating;
+      return b.popularity - a.popularity;
     });
   }, [filters, query, sort]);
 
-  const wishlistProducts = allProducts.filter((product) => wishlist.has(product.id));
+  const finderResults = useMemo(() => {
+    const budget = budgetOptions.find((option) => option.label === finder.budget) ?? budgetOptions[2];
+    const style = finder.style.toLowerCase();
+    return products
+      .filter((product) => product.price <= budget.max)
+      .filter((product) => product.recipients.includes(finder.recipient) || product.gender === "Everyone")
+      .filter((product) => product.occasions.includes(finder.occasion) || product.category === "Custom Gift Boxes")
+      .filter((product) => product.giftTypes.some((type) => type.includes(style)) || product.description.toLowerCase().includes(style))
+      .sort((a, b) => b.rating + b.popularity / 100 - (a.rating + a.popularity / 100))
+      .slice(0, 4);
+  }, [finder]);
 
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "Store",
-    name: "Thashy Gift Hub",
-    description:
-      "Affordable Sri Lankan gift shop for ready-made gift packs, individual gifts and customized budget gift boxes.",
-    areaServed: "Sri Lanka",
-    priceRange: "Rs. 850 - Rs. 10,000",
-    slogan: "Tell Us Your Budget, We Create the Gift.",
-    sameAs: ["https://www.instagram.com/", "https://www.tiktok.com/", "https://www.facebook.com/"],
-  };
+  const recommendedProducts = finderResults.length > 0 ? finderResults : products.slice(0, 4);
 
-  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const updateFilter = (name: keyof typeof filters, value: string) => {
-    setFilters((current) => ({ ...current, [name]: value }));
+  const addToCart = (product: Product, quantity = 1, message?: string) => {
+    setCart((current) => {
+      const existing = !message && current.find((item) => item.product.id === product.id && !item.message);
+      if (existing) {
+        return current.map((item) =>
+          item.lineId === existing.lineId ? { ...item, quantity: Math.min(20, item.quantity + quantity) } : item,
+        );
+      }
+      return [
+        ...current,
+        {
+          lineId: `${product.id}-${Date.now()}`,
+          product,
+          quantity: Math.min(20, quantity),
+          message,
+        },
+      ];
+    });
   };
 
   const toggleWishlist = (productId: string) => {
@@ -661,574 +657,367 @@ export default function Home() {
     });
   };
 
-  const addToCart = (product: Product, quantity = 1) => {
-    setCart((current) => {
-      const existing = current.find((item) => item.product.id === product.id);
-      if (existing) {
-        return current.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: Math.min(20, item.quantity + quantity) }
-            : item,
-        );
-      }
-      return [...current, { product, quantity }];
-    });
-  };
-
-  const updateQuantity = (productId: string, delta: number) => {
+  const updateQuantity = (lineId: string, quantity: number) => {
     setCart((current) =>
       current
-        .map((item) =>
-          item.product.id === productId ? { ...item, quantity: item.quantity + delta } : item,
-        )
+        .map((item) => (item.lineId === lineId ? { ...item, quantity: Math.min(20, Math.max(0, quantity)) } : item))
         .filter((item) => item.quantity > 0),
     );
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart((current) => current.filter((item) => item.product.id !== productId));
+  const resetFilters = () => {
+    setQuery("");
+    setFilters({
+      category: "All",
+      price: "All",
+      gender: "All",
+      occasion: "All",
+      rating: "All",
+      availability: "All",
+    });
+    setSort("Popular");
   };
 
-  const saveForLater = (product: Product) => {
-    setSavedForLater((current) =>
-      current.some((item) => item.id === product.id) ? current : [...current, product],
-    );
-    removeFromCart(product.id);
+  const selectCategory = (category: string) => {
+    setFilters((current) => ({ ...current, category }));
+    document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
   };
 
   const openProduct = (product: Product) => {
     setSelectedProduct(product);
-    setSelectedImage(product.image);
     setQuickQuantity(1);
   };
 
-  const applyPromoCode = () => {
-    setPromoApplied(promoCode.trim().toUpperCase() === "THASHY10");
+  const toggleBuilderItem = (product: Product) => {
+    setBuilderItems((current) => {
+      const next = new Set(current);
+      if (next.has(product.id)) {
+        next.delete(product.id);
+        return next;
+      }
+      const nextTotal = builderTotal + product.price;
+      if (nextTotal > activeBudget.max) {
+        setBuilderStatus("error");
+        return next;
+      }
+      next.add(product.id);
+      setBuilderStatus("idle");
+      return next;
+    });
   };
 
-  const giftWhatsAppMessage = () => {
-    const budget = giftForm.budget === "Custom Budget" ? giftForm.customBudget : giftForm.budget;
-    return [
-      "Hello Thashy Gift Hub, I want to create a custom gift.",
-      `Who is it for: ${giftForm.recipientType}`,
-      `Occasion: ${giftForm.occasion}`,
-      `Budget: ${budget || "Not specified"}`,
-      `Preferred items: ${giftForm.preferredItems || "Open to suggestions"}`,
-      `Favourite colours: ${giftForm.favouriteColours || "Not specified"}`,
-      `Recipient name: ${giftForm.recipientName || "Not specified"}`,
-      `Personal message: ${giftForm.personalMessage || "Not specified"}`,
-      `Preferred delivery date: ${giftForm.deliveryDate || "Not specified"}`,
-      `Special requests: ${giftForm.specialRequests || "None"}`,
-      giftForm.photoName ? `Photo to include: ${giftForm.photoName}` : "Photo to include: No",
-    ].join("\n");
+  const createGiftBox = () => {
+    if (selectedBuilderProducts.length === 0) {
+      setBuilderStatus("error");
+      return;
+    }
+
+    const customProduct: Product = {
+      id: "custom-budget-gift-box",
+      name: `Custom Gift Box for ${builderRecipient}`,
+      category: "Custom Gift Boxes",
+      gender: builderRecipient,
+      recipients: [builderRecipient],
+      occasions: [builderOccasion],
+      giftTypes: ["custom", "curated", "gift box"],
+      price: builderTotal,
+      rating: 5,
+      reviews: 1,
+      badge: "CUSTOM",
+      availability: "Preorder",
+      image: fallbackImage,
+      description: `${builderOccasion} box with ${selectedBuilderProducts.map((product) => product.name).join(", ")}.`,
+      details: selectedBuilderProducts.map((product) => product.name),
+      createdAt: new Date().toISOString(),
+      popularity: 100,
+    };
+
+    addToCart(customProduct, 1, sanitizeText(builderMessage));
+    setBuilderStatus("success");
   };
 
-  const cartWhatsAppMessage = () => {
-    const selectedProducts = cart
-      .map((item) => `${item.product.title} x ${item.quantity} - ${formatPrice(item.product.price * item.quantity)}`)
-      .join("\n");
-
-    return [
-      "Hello Thashy Gift Hub, I want to place an order.",
-      `Customer name: ${checkoutForm.fullName || "Not provided yet"}`,
-      `Selected products:\n${selectedProducts || "No products selected"}`,
-      `Subtotal: ${formatPrice(subtotal)}`,
-      `Delivery charge: ${formatPrice(deliveryCharge)}`,
-      `Discount: ${formatPrice(discount)}`,
-      `Total amount: ${formatPrice(total)}`,
-      `Delivery address: ${checkoutForm.address || "Not provided yet"}`,
-      `City: ${checkoutForm.city || "Not provided yet"}`,
-      `Gift recipient: ${checkoutForm.recipientName || "Not provided yet"}`,
-      `Gift message: ${checkoutForm.giftMessage || "Not provided yet"}`,
-      `Preferred delivery date: ${checkoutForm.deliveryDate || "Not provided yet"}`,
-    ].join("\n");
-  };
-
-  const handleGiftSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setGiftSubmitted(true);
-  };
-
-  const handleGiftInput = (
-    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
-  ) => {
-    const { name, value } = event.target;
-    setGiftForm((current) => ({ ...current, [name]: value }));
-  };
-
-  const handleCheckoutInput = (
-    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
-  ) => {
-    const { name, value } = event.target;
-    setCheckoutForm((current) => ({ ...current, [name]: value }));
+  const validateCheckout = () => {
+    const errors: Record<string, string> = {};
+    if (cart.length === 0) errors.cart = "Please add at least one gift before checkout.";
+    if (sanitizeText(checkoutForm.fullName).length < 3) errors.fullName = "Enter your full name.";
+    if (!/^(\+94|0)?7\d{8}$/.test(checkoutForm.phone.replace(/\s|-/g, ""))) {
+      errors.phone = "Enter a valid Sri Lankan mobile number.";
+    }
+    if (checkoutForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkoutForm.email)) {
+      errors.email = "Enter a valid email address.";
+    }
+    if (sanitizeText(checkoutForm.address).length < 8) errors.address = "Enter your delivery address.";
+    if (!checkoutForm.city.trim()) errors.city = "Enter your city.";
+    if (!checkoutForm.district) errors.district = "Choose your district.";
+    return errors;
   };
 
   const handleCheckoutSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setOrderSuccess(true);
+    const errors = validateCheckout();
+    setCheckoutErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    const order: LastOrder = {
+      id: `TGH-2026-${String(Math.floor(1000 + Math.random() * 9000))}`,
+      customer: sanitizeText(checkoutForm.fullName),
+      total,
+      items: cart,
+      paymentMethod: checkoutForm.paymentMethod,
+    };
+    setLastOrder(order);
+    setTrackInput(order.id);
+    setTrackingStatus("found");
+    setCart([]);
   };
 
-  const resetShop = () => {
-    setQuery("");
-    setFilters({
-      category: "All",
-      recipient: "All",
-      occasion: "All",
-      price: "All",
-      availability: "All",
-    });
+  const handleContactSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!sanitizeText(contactForm.name) || !sanitizeText(contactForm.message)) {
+      setContactStatus("error");
+      return;
+    }
+    setContactStatus("success");
   };
+
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const orderMessage = [
+    "Hello Thashy Gift Hub, I want to place an order.",
+    `Name: ${sanitizeText(checkoutForm.fullName) || "Not provided"}`,
+    `Phone: ${sanitizeText(checkoutForm.phone) || "Not provided"}`,
+    `Address: ${sanitizeText(checkoutForm.address) || "Not provided"}`,
+    `Items: ${cart.map((item) => `${item.product.name} x ${item.quantity}`).join(", ") || "Not selected"}`,
+    `Total: ${formatPrice(total)}`,
+  ].join("\n");
 
   return (
     <main className="site-shell">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
+      <div className="top-bar">
+        <span>🎁 Free delivery available for selected areas</span>
+        <span>💝 Custom gifts available</span>
+      </div>
+
       <header className="site-header">
         <a className="brand" href="#home" aria-label="Thashy Gift Hub home">
           <span className="brand-mark">TG</span>
           <span>
             <strong>Thashy Gift Hub</strong>
-            <small>Tell Us Your Budget</small>
+            <small>Tell Us Your Budget, We Create the Gift.</small>
           </span>
         </a>
 
         <nav className="desktop-nav" aria-label="Main navigation">
           {navItems.map(([label, id]) => (
-            <a key={id} href={`#${id}`}>
+            <a href={`#${id}`} key={id}>
               {label}
             </a>
           ))}
         </nav>
 
-        <form className="header-search" onSubmit={handleSearchSubmit} role="search">
-          <label className="sr-only" htmlFor="site-search">
-            Search products
+        <form className="header-search" role="search" onSubmit={handleSearchSubmit}>
+          <label className="sr-only" htmlFor="header-search">
+            Search gifts
           </label>
           <input
-            id="site-search"
+            id="header-search"
             type="search"
-            placeholder="Search gifts"
+            placeholder="Search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
         </form>
 
-        <div className="header-actions" aria-label="Shopping tools">
-          <a href="#wishlist">Wishlist <span>{wishlist.size}</span></a>
-          <a href="#cart">Cart <span>{cartCount}</span></a>
-          <button type="button" onClick={() => setAccountOpen(true)}>
-            Account
-          </button>
+        <div className="header-actions">
+          <a href="#wishlist" aria-label={`Wishlist with ${wishlist.size} saved items`}>
+            ♡ <span>{wishlist.size}</span>
+          </a>
+          <a href="#cart" aria-label={`Cart with ${cartCount} items`}>
+            🛒 <span>{cartCount}</span>
+          </a>
+          <a href="#account">Account</a>
         </div>
 
         <button
-          className="hamburger"
+          className="mobile-icon-button"
           type="button"
-          aria-label="Open menu"
+          aria-label="Open navigation menu"
           aria-expanded={mobileMenuOpen}
           onClick={() => setMobileMenuOpen((open) => !open)}
         >
-          <span />
-          <span />
-          <span />
+          ☰
         </button>
 
         {mobileMenuOpen && (
           <div className="mobile-menu">
-            <form onSubmit={handleSearchSubmit} role="search">
+            <form role="search" onSubmit={handleSearchSubmit}>
               <label className="sr-only" htmlFor="mobile-search">
-                Search products
+                Search gifts
               </label>
               <input
                 id="mobile-search"
                 type="search"
-                placeholder="Search gifts"
+                placeholder="Search products"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
             </form>
             {navItems.map(([label, id]) => (
-              <a key={id} href={`#${id}`} onClick={() => setMobileMenuOpen(false)}>
+              <a href={`#${id}`} key={id} onClick={() => setMobileMenuOpen(false)}>
                 {label}
               </a>
             ))}
+            <div className="mobile-menu-actions">
+              <a href="#wishlist" onClick={() => setMobileMenuOpen(false)}>
+                Wishlist {wishlist.size}
+              </a>
+              <a href="#cart" onClick={() => setMobileMenuOpen(false)}>
+                Cart {cartCount}
+              </a>
+              <a href="#account" onClick={() => setMobileMenuOpen(false)}>
+                Account
+              </a>
+            </div>
           </div>
         )}
       </header>
 
       <section className="hero" id="home">
         <div className="hero-copy">
-          <p className="eyebrow">Thashy Gift Hub</p>
-          <h1>Make Every Moment Special with Thashy Gift Hub</h1>
-          <p className="hero-subtitle">
-            Thoughtful gifts for every person, every occasion and every budget.
-          </p>
+          <p className="eyebrow">Sri Lankan gift and lifestyle store</p>
+          <h1>Find the Perfect Gift 🎁</h1>
+          <p className="hero-subtitle">Tell Us Your Budget, We Create the Gift.</p>
+          <p className="hero-description">Cute, affordable and meaningful gifts for every special moment.</p>
           <div className="hero-actions">
             <a className="button primary" href="#shop">
               Shop Gifts
             </a>
-            <a className="button secondary" href="#build-your-gift">
-              Build Your Gift
+            <a className="button secondary" href="#custom-gift">
+              Create My Gift Box
             </a>
           </div>
-          <p className="trust-strip">Affordable Gifts • Beautifully Packed • Islandwide Delivery</p>
+          <div className="hero-stats" aria-label="Store highlights">
+            <span>1,000+ happy orders</span>
+            <span>Custom boxes from LKR 1,000</span>
+            <span>Islandwide delivery</span>
+          </div>
         </div>
-        <div className="hero-media" aria-label="Curated premium gift boxes">
+        <div className="hero-visual">
           <img
-            src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=1200&q=85"
-            alt="Elegant wrapped gifts and lifestyle gift boxes"
+            src="https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=1200&q=86"
+            alt="Premium wrapped gift boxes with ribbons"
+            loading="eager"
+            onError={(event) => {
+              event.currentTarget.src = fallbackImage;
+            }}
           />
-          <div className="budget-card">
-            <span>Tell Us Your Budget</span>
-            <strong>We Create the Gift.</strong>
-            <p>Custom boxes from Rs. 1,000 with friendly WhatsApp support.</p>
+          <div className="hero-note">
+            <span>Signature service</span>
+            <strong>Budget-first gift curation</strong>
+            <p>Tell us the person, occasion and budget. We handle the sweet part.</p>
           </div>
         </div>
       </section>
 
-      <section className="section category-section" id="occasions">
+      <section className="offer-strip" aria-label="Special offer collections">
+        {[
+          "Gifts Under LKR 2,000 🎁",
+          "Cute Gifts for Her 💝",
+          "Gifts for Him 🖤",
+          "Couple Collection 💑",
+          "Build Your Own Gift Box",
+        ].map((offer) => (
+          <button
+            key={offer}
+            type="button"
+            onClick={() => {
+              if (offer.includes("Under")) setFilters((current) => ({ ...current, price: "LKR 1,000-2,000" }));
+              if (offer.includes("Her")) setFilters((current) => ({ ...current, gender: "Girls" }));
+              if (offer.includes("Him")) setFilters((current) => ({ ...current, gender: "Boys" }));
+              if (offer.includes("Couple")) setFilters((current) => ({ ...current, category: "Couple Gifts" }));
+              document.getElementById(offer.includes("Build") ? "custom-gift" : "shop")?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            {offer}
+          </button>
+        ))}
+      </section>
+
+      <section className="section" id="categories">
         <div className="section-heading">
           <p className="eyebrow">Shop by Category</p>
-          <h2>Find the perfect little something</h2>
-          <p>Gift ideas for boys, girls, couples, friends and family, sorted by moment and budget.</p>
+          <h2>Gift paths for every person and moment</h2>
+          <p>Pick a category and the shop instantly filters to useful Sri Lankan gift ideas.</p>
         </div>
         <div className="category-grid">
-          {categories.map((category, index) => (
-            <button
-              className="category-card"
-              type="button"
-              key={category}
-              onClick={() => {
-                if (category.includes("Under")) updateFilter("price", category);
-                else if (category.includes("Premium")) updateFilter("category", "Premium Gift Boxes");
-                else if (category.includes("Couple")) updateFilter("recipient", "Couples");
-                else if (category.includes("Him")) updateFilter("recipient", "Him");
-                else if (category.includes("Her")) updateFilter("recipient", "Her");
-                else if (category.includes("Birthday")) updateFilter("occasion", "Birthday");
-                document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
-              }}
-            >
-              <span className="category-number">{String(index + 1).padStart(2, "0")}</span>
-              <strong>{category}</strong>
+          {categoryCards.map(([icon, name, note]) => (
+            <button className="category-card" type="button" key={name} onClick={() => selectCategory(name)}>
+              <span>{icon}</span>
+              <strong>{name}</strong>
+              <small>{note}</small>
             </button>
           ))}
         </div>
-      </section>
-
-      <section className="section warm-band" id="popular-gift-packs">
-        <div className="section-heading split-heading">
-          <div>
-            <p className="eyebrow">Ready-made favourites</p>
-            <h2>Popular Gift Packs</h2>
-          </div>
-          <a className="text-link" href="#gift-packs">
-            View all packs
-          </a>
-        </div>
-        <div className="product-grid featured-grid">
-          {popularPacks.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              wishlistActive={wishlist.has(product.id)}
-              onWishlist={() => toggleWishlist(product.id)}
-              onAdd={() => addToCart(product)}
-              onView={() => openProduct(product)}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="section" id="new-arrivals">
-        <div className="section-heading split-heading">
-          <div>
-            <p className="eyebrow">Fresh picks</p>
-            <h2>New Arrivals</h2>
-          </div>
-          <span className="section-pill">Limited weekly drops</span>
-        </div>
-        <div className="mini-product-row">
-          {newArrivals.map((product) => (
-            <button className="arrival-card" type="button" key={product.id} onClick={() => openProduct(product)}>
-              <img src={product.image} alt={product.title} />
-              <span>{product.title}</span>
-              <strong>{formatPrice(product.price)}</strong>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="section build-section" id="build-your-gift">
-        <div className="build-intro">
-          <p className="eyebrow">Signature service</p>
-          <h2>Tell Us Your Budget, We’ll Create the Gift.</h2>
-          <p>
-            Share the person, occasion, budget and small details. We will curate a thoughtful
-            box and continue the order on WhatsApp.
-          </p>
-          <div className="build-highlights">
-            <span>Budget friendly</span>
-            <span>Personal messages</span>
-            <span>Photo add-ons</span>
-          </div>
-        </div>
-
-        <form className="gift-builder" onSubmit={handleGiftSubmit}>
-          <fieldset>
-            <legend>Who is the gift for?</legend>
-            <div className="chip-grid">
-              {recipientOptions.map((option) => (
-                <label className="chip" key={option}>
-                  <input
-                    type="radio"
-                    name="recipientType"
-                    value={option}
-                    checked={giftForm.recipientType === option}
-                    onChange={handleGiftInput}
-                  />
-                  <span>{option}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>Select Occasion</legend>
-            <div className="chip-grid">
-              {occasionOptions.map((option) => (
-                <label className="chip" key={option}>
-                  <input
-                    type="radio"
-                    name="occasion"
-                    value={option}
-                    checked={giftForm.occasion === option}
-                    onChange={handleGiftInput}
-                  />
-                  <span>{option}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>Select Budget</legend>
-            <div className="chip-grid budget-grid">
-              {budgetOptions.map((option) => (
-                <label className="chip" key={option}>
-                  <input
-                    type="radio"
-                    name="budget"
-                    value={option}
-                    checked={giftForm.budget === option}
-                    onChange={handleGiftInput}
-                  />
-                  <span>{option}</span>
-                </label>
-              ))}
-            </div>
-            {giftForm.budget === "Custom Budget" && (
-              <label className="field full-field">
-                <span>Custom budget</span>
-                <input
-                  name="customBudget"
-                  value={giftForm.customBudget}
-                  onChange={handleGiftInput}
-                  placeholder="Example: Rs. 4,500"
-                  inputMode="numeric"
-                />
-              </label>
-            )}
-          </fieldset>
-
-          <div className="form-grid">
-            <label className="field">
-              <span>Preferred items</span>
-              <input
-                name="preferredItems"
-                value={giftForm.preferredItems}
-                onChange={handleGiftInput}
-                placeholder="Teddy, watch, chocolates..."
-              />
-            </label>
-            <label className="field">
-              <span>Favourite colours</span>
-              <input
-                name="favouriteColours"
-                value={giftForm.favouriteColours}
-                onChange={handleGiftInput}
-                placeholder="Black, pink, beige..."
-              />
-            </label>
-            <label className="field">
-              <span>Recipient name</span>
-              <input
-                name="recipientName"
-                value={giftForm.recipientName}
-                onChange={handleGiftInput}
-                placeholder="Name to add on card"
-              />
-            </label>
-            <label className="field">
-              <span>Preferred delivery date</span>
-              <input
-                type="date"
-                name="deliveryDate"
-                value={giftForm.deliveryDate}
-                onChange={handleGiftInput}
-              />
-            </label>
-            <label className="field full-field">
-              <span>Personal message</span>
-              <textarea
-                name="personalMessage"
-                value={giftForm.personalMessage}
-                onChange={handleGiftInput}
-                placeholder="Write the message for the card"
-              />
-            </label>
-            <label className="field full-field">
-              <span>Special requests</span>
-              <textarea
-                name="specialRequests"
-                value={giftForm.specialRequests}
-                onChange={handleGiftInput}
-                placeholder="Any allergies, favourite brands, delivery notes or presentation ideas"
-              />
-            </label>
-            <label className="upload-field full-field">
-              <span>Optional photo upload</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) =>
-                  setGiftForm((current) => ({
-                    ...current,
-                    photoName: event.target.files?.[0]?.name ?? "",
-                  }))
-                }
-              />
-              <small>{giftForm.photoName || "Add a photo if you want it included in the gift box."}</small>
-            </label>
-          </div>
-
-          <div className="builder-actions">
-            <button className="button primary" type="submit">
-              Create My Gift
-            </button>
-            <button className="button secondary" type="button" onClick={() => openWhatsApp(giftWhatsAppMessage())}>
-              Continue Order on WhatsApp
-            </button>
-          </div>
-
-          {giftSubmitted && (
-            <div className="confirmation-box" role="status">
-              <strong>Your gift brief is ready.</strong>
-              <p>
-                We saved your selections on this page. Continue on WhatsApp so the team can confirm
-                availability, packing style and delivery.
-              </p>
-              <a className="button primary" href={buildWhatsAppUrl(giftWhatsAppMessage())} target="_blank" rel="noreferrer">
-                Send Details on WhatsApp
-              </a>
-            </div>
-          )}
-        </form>
       </section>
 
       <section className="section shop-section" id="shop">
         <div className="section-heading split-heading">
           <div>
-            <p className="eyebrow">Full shop</p>
-            <h2>Cute Little Things</h2>
-            <p>Browse individual products and ready-made packs customers can purchase separately.</p>
+            <p className="eyebrow">Shop Gifts</p>
+            <h2>Premium picks, friendly prices</h2>
+            <p>Search by product, category, recipient, occasion, style or keyword.</p>
           </div>
-          <span className="section-pill">{filteredProducts.length} products</span>
+          <span className="result-count">{filteredProducts.length} gifts found</span>
         </div>
 
         <div className="shop-layout">
           <aside className="filters" aria-label="Product filters">
-            <form className="filter-search" onSubmit={handleSearchSubmit}>
-              <label htmlFor="product-search">Search products</label>
+            <form className="filter-search" role="search" onSubmit={handleSearchSubmit}>
+              <label htmlFor="product-search">Product Search</label>
               <input
                 id="product-search"
                 type="search"
-                placeholder="Try bracelets, teddy, wallet"
+                placeholder="Try teddy, couple, graduation"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
             </form>
-
-            <FilterSelect
-              label="Category"
-              value={filters.category}
-              options={categoryOptions}
-              onChange={(value) => updateFilter("category", value)}
-            />
-            <FilterSelect
-              label="Recipient"
-              value={filters.recipient}
-              options={recipientFilterOptions}
-              onChange={(value) => updateFilter("recipient", value)}
-            />
-            <FilterSelect
-              label="Occasion"
-              value={filters.occasion}
-              options={occasionFilterOptions}
-              onChange={(value) => updateFilter("occasion", value)}
-            />
-            <FilterSelect
-              label="Price range"
-              value={filters.price}
-              options={[
-                "All",
-                "Under Rs. 1,500",
-                "Rs. 1,500 - Rs. 2,500",
-                "Rs. 2,500 - Rs. 5,000",
-                "Above Rs. 5,000",
-              ]}
-              onChange={(value) => updateFilter("price", value)}
-            />
-            <FilterSelect
-              label="Availability"
-              value={filters.availability}
-              options={["All", "In Stock", "Only a Few Left", "Preorder"]}
-              onChange={(value) => updateFilter("availability", value)}
-            />
-            <FilterSelect
-              label="Sort by"
-              value={sort}
-              options={["Newest", "Most Popular", "Best Selling", "Price Low to High", "Price High to Low"]}
-              onChange={setSort}
-            />
-            <button className="button secondary filter-reset" type="button" onClick={resetShop}>
-              Reset Filters
+            <FilterSelect label="Category" value={filters.category} options={categoryOptions} onChange={(value) => setFilters((current) => ({ ...current, category: value }))} />
+            <FilterSelect label="Price range" value={filters.price} options={["All", ...budgetOptions.map((option) => option.label)]} onChange={(value) => setFilters((current) => ({ ...current, price: value }))} />
+            <FilterSelect label="Gender" value={filters.gender} options={["All", "Boys", "Girls", "Couples", "Family", "Everyone"]} onChange={(value) => setFilters((current) => ({ ...current, gender: value }))} />
+            <FilterSelect label="Occasion" value={filters.occasion} options={["All", ...occasionOptions]} onChange={(value) => setFilters((current) => ({ ...current, occasion: value }))} />
+            <FilterSelect label="Rating" value={filters.rating} options={["All", "5", "4.5", "4"]} onChange={(value) => setFilters((current) => ({ ...current, rating: value }))} />
+            <FilterSelect label="Availability" value={filters.availability} options={["All", "In Stock", "Limited", "Preorder"]} onChange={(value) => setFilters((current) => ({ ...current, availability: value }))} />
+            <FilterSelect label="Sort" value={sort} options={["Popular", "Newest", "Price: Low to High", "Price: High to Low", "Best Rated"]} onChange={setSort} />
+            <button className="button secondary full-width" type="button" onClick={resetFilters}>
+              Browse All Gifts
             </button>
           </aside>
 
           <div className="shop-results">
             {filteredProducts.length > 0 ? (
-              <div className="product-grid shop-grid">
+              <div className="product-grid">
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
                     wishlistActive={wishlist.has(product.id)}
-                    compact
                     onWishlist={() => toggleWishlist(product.id)}
                     onAdd={() => addToCart(product)}
-                    onView={() => openProduct(product)}
+                    onQuickView={() => openProduct(product)}
                   />
                 ))}
               </div>
             ) : (
-              <div className="empty-state no-results">
-                <span>No Products Found</span>
-                <h3>No gifts match those filters yet.</h3>
-                <p>Try a different budget, recipient or occasion to see more gift ideas.</p>
-                <button className="button primary" type="button" onClick={resetShop}>
-                  Clear Search
+              <div className="empty-state">
+                <span>No matching gifts</span>
+                <h3>Sorry, we couldn&apos;t find any gifts matching your search.</h3>
+                <p>Try a softer budget range, another occasion or browse every gift in the shop.</p>
+                <button className="button primary" type="button" onClick={resetFilters}>
+                  Browse All Gifts
                 </button>
               </div>
             )}
@@ -1236,129 +1025,168 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section cute-section">
-        <div className="section-heading">
-          <p className="eyebrow">Individual add-ons</p>
-          <h2>Small gifts that make the box feel personal</h2>
-        </div>
-        <div className="cute-grid">
-          {cuteThings.map((product) => (
-            <button className="cute-card" type="button" key={product.id} onClick={() => openProduct(product)}>
-              <img src={product.image} alt={product.title} />
-              <span>{product.category}</span>
-              <strong>{product.title}</strong>
-              <small>{formatPrice(product.price)}</small>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="section packs-section" id="gift-packs">
-        <div className="section-heading">
-          <p className="eyebrow">Gift pack page</p>
-          <h2>Ready-made packs for every person</h2>
-          <p>Every pack clearly lists what is inside, so customers can order with confidence.</p>
-        </div>
-        <div className="pack-collection-grid">
-          {giftPackCollections.map((collection) => {
-            const items = collection.productIds
-              .map((id) => allProducts.find((product) => product.id === id))
-              .filter(Boolean) as Product[];
-
-            return (
-              <article className="pack-collection" key={collection.title}>
-                <div>
-                  <h3>{collection.title}</h3>
-                  <p>{collection.description}</p>
-                </div>
-                <ul>
-                  {items.flatMap((product) => product.included.slice(0, 2)).slice(0, 5).map((item, itemIndex) => (
-                    <li key={`${collection.title}-${item}-${itemIndex}`}>{item}</li>
-                  ))}
-                </ul>
-                <button className="button secondary" type="button" onClick={() => openProduct(items[0])}>
-                  View Pack
-                </button>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="section why-section">
-        <div className="section-heading">
-          <p className="eyebrow">Why shop with us</p>
-          <h2>Cute, trusted and easy to order</h2>
-        </div>
-        <div className="trust-grid">
-          {trustItems.map(([title, description]) => (
-            <article className="trust-card" key={title}>
-              <span aria-hidden="true" />
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section about-section" id="about-us">
-        <div className="about-media">
-          <img
-            src="https://images.unsplash.com/photo-1607344645866-009c320b63e0?auto=format&fit=crop&w=1000&q=82"
-            alt="A curated gift box with soft packing details"
-          />
-        </div>
-        <div className="about-copy">
-          <p className="eyebrow">About Us</p>
-          <h2>Small gifts, beautiful memories</h2>
-          <p>
-            At Thashy Gift Hub, we believe every small gift can create a beautiful memory.
-            Whether you’re celebrating a birthday, anniversary, friendship, relationship, or
-            simply surprising someone special, we make gifting easy and memorable.
-          </p>
-          <p>
-            Choose from our ready-made gift packs, individual gift items, or simply tell us your
-            budget and occasion. Our team will create a beautiful customized gift just for you.
-          </p>
-        </div>
-      </section>
-
-      <section className="section testimonials-section">
+      <section className="section gift-boxes" id="gift-boxes">
         <div className="section-heading split-heading">
           <div>
-            <p className="eyebrow">Customer reviews</p>
-            <h2>Loved by thoughtful gifters</h2>
+            <p className="eyebrow">Gift Boxes</p>
+            <h2>Ready-made boxes customers love</h2>
           </div>
-          <span className="section-pill">4.9 average rating</span>
-        </div>
-        <div className="testimonial-grid">
-          {testimonials.map((review, index) => (
-            <article className="testimonial-card" key={review}>
-              <div className="rating" aria-label="5 star rating">★★★★★</div>
-              <p>“{review}”</p>
-              <strong>Customer {index + 1}</strong>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section instagram-section">
-        <div className="section-heading split-heading">
-          <div>
-            <p className="eyebrow">Instagram gallery</p>
-            <h2>Follow Our Little Gift Moments</h2>
-          </div>
-          <a className="text-link" href="#contact">
-            @thashygifthub
+          <a className="text-link" href="#custom-gift">
+            Build your own
           </a>
         </div>
-        <div className="instagram-grid">
-          {instagramImages.map((item) => (
-            <article className="instagram-card" key={item.title}>
-              <img src={item.image} alt={item.title} />
-              <span>{item.title}</span>
-            </article>
-          ))}
+        <div className="collection-grid">
+          {products
+            .filter((product) => ["Birthday Gifts", "Couple Gifts", "Gifts for Boys", "Gifts for Girls", "Custom Gift Boxes", "Family Gifts"].includes(product.category))
+            .slice(0, 6)
+            .map((product) => (
+              <article className="collection-card" key={product.id}>
+                <img src={product.image} alt={product.name} loading="lazy" onError={(event) => (event.currentTarget.src = fallbackImage)} />
+                <div>
+                  <span>{product.category}</span>
+                  <h3>{product.name}</h3>
+                  <p>{product.description}</p>
+                  <button className="button secondary" type="button" onClick={() => openProduct(product)}>
+                    View Gift Box
+                  </button>
+                </div>
+              </article>
+            ))}
+        </div>
+      </section>
+
+      <section className="section builder-section" id="custom-gift">
+        <div className="section-heading">
+          <p className="eyebrow">Build Your Own Gift Box 🎁</p>
+          <h2>Tell Us Your Budget, We Create the Gift.</h2>
+          <p>Select a budget, recipient, occasion and the items you like. We show the total before adding it to cart.</p>
+        </div>
+
+        <div className="builder-layout">
+          <div className="builder-steps">
+            <BuilderStep title="Step 1 - Choose Your Budget">
+              <div className="chip-grid">
+                {budgetOptions.map((option) => (
+                  <button
+                    className={builderBudget === option.label ? "chip-button active" : "chip-button"}
+                    type="button"
+                    key={option.label}
+                    onClick={() => {
+                      setBuilderBudget(option.label);
+                      setBuilderStatus("idle");
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </BuilderStep>
+            <BuilderStep title="Step 2 - Choose Recipient">
+              <div className="chip-grid">
+                {recipientOptions.map((option) => (
+                  <button className={builderRecipient === option ? "chip-button active" : "chip-button"} type="button" key={option} onClick={() => setBuilderRecipient(option)}>
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </BuilderStep>
+            <BuilderStep title="Step 3 - Choose Occasion">
+              <div className="chip-grid">
+                {occasionOptions.map((option) => (
+                  <button className={builderOccasion === option ? "chip-button active" : "chip-button"} type="button" key={option} onClick={() => setBuilderOccasion(option)}>
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </BuilderStep>
+            <BuilderStep title="Step 4 - Select Items">
+              <div className="builder-items">
+                {customBoxItems.slice(0, 8).map((product) => (
+                  <button
+                    type="button"
+                    className={builderItems.has(product.id) ? "builder-item selected" : "builder-item"}
+                    key={product.id}
+                    onClick={() => toggleBuilderItem(product)}
+                  >
+                    <img src={product.image} alt={product.name} loading="lazy" onError={(event) => (event.currentTarget.src = fallbackImage)} />
+                    <span>{product.name}</span>
+                    <strong>{formatPrice(product.price)}</strong>
+                  </button>
+                ))}
+              </div>
+            </BuilderStep>
+            <BuilderStep title="Step 5 - Personal Message">
+              <label className="field">
+                <span>Write your special message...</span>
+                <textarea value={builderMessage} onChange={(event) => setBuilderMessage(event.target.value)} placeholder="Write your special message..." />
+              </label>
+            </BuilderStep>
+          </div>
+
+          <aside className="builder-summary">
+            <h3>Selected Items</h3>
+            {selectedBuilderProducts.length > 0 ? (
+              <ul>
+                {selectedBuilderProducts.map((product) => (
+                  <li key={product.id}>
+                    <span>{product.name}</span>
+                    <strong>{formatPrice(product.price)}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No items selected yet.</p>
+            )}
+            <dl>
+              <div>
+                <dt>Total Price</dt>
+                <dd>{formatPrice(builderTotal)}</dd>
+              </div>
+              <div>
+                <dt>Remaining Budget</dt>
+                <dd>{formatPrice(remainingBudget)}</dd>
+              </div>
+            </dl>
+            {builderStatus === "error" && <p className="form-error">Choose items within your selected budget.</p>}
+            {builderStatus === "success" && <p className="form-success">Your custom gift box was added to cart.</p>}
+            <button className="button primary full-width" type="button" onClick={createGiftBox}>
+              Create My Gift Box
+            </button>
+          </aside>
+        </div>
+      </section>
+
+      <section className="section finder-section">
+        <div className="section-heading">
+          <p className="eyebrow">Not Sure What to Buy? 🤔</p>
+          <h2>Answer a few quick questions</h2>
+        </div>
+        <div className="finder-layout">
+          <form
+            className="finder-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setFinderUsed(true);
+            }}
+          >
+            <FilterSelect label="Who are you buying for?" value={finder.recipient} options={[...recipientOptions]} onChange={(value) => setFinder((current) => ({ ...current, recipient: value }))} />
+            <FilterSelect label="What is your budget?" value={finder.budget} options={budgetOptions.map((option) => option.label)} onChange={(value) => setFinder((current) => ({ ...current, budget: value }))} />
+            <FilterSelect label="What is the occasion?" value={finder.occasion} options={[...occasionOptions]} onChange={(value) => setFinder((current) => ({ ...current, occasion: value }))} />
+            <FilterSelect label="What type of gift do they like?" value={finder.style} options={["cute", "premium", "romantic", "practical", "meaningful"]} onChange={(value) => setFinder((current) => ({ ...current, style: value }))} />
+            <button className="button primary" type="submit">
+              Recommend Gifts
+            </button>
+          </form>
+          <div className="finder-results" aria-live="polite">
+            <h3>{finderUsed ? "Recommended gifts" : "Popular recommendations"}</h3>
+            {recommendedProducts.map((product) => (
+              <button className="finder-result" type="button" key={product.id} onClick={() => openProduct(product)}>
+                <img src={product.image} alt={product.name} loading="lazy" onError={(event) => (event.currentTarget.src = fallbackImage)} />
+                <span>{product.name}</span>
+                <strong>{formatPrice(product.price)}</strong>
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -1366,395 +1194,358 @@ export default function Home() {
         <div className="section-heading split-heading">
           <div>
             <p className="eyebrow">Wishlist</p>
-            <h2>Your saved gift ideas</h2>
+            <h2>Saved gift ideas</h2>
           </div>
-          <span className="section-pill">{wishlistProducts.length} saved</span>
+          <span className="result-count">{wishlistProducts.length} saved</span>
         </div>
         {wishlistProducts.length > 0 ? (
-          <div className="mini-product-row">
+          <div className="product-grid compact-grid">
             {wishlistProducts.map((product) => (
-              <button className="arrival-card" type="button" key={product.id} onClick={() => openProduct(product)}>
-                <img src={product.image} alt={product.title} />
-                <span>{product.title}</span>
-                <strong>{formatPrice(product.price)}</strong>
-              </button>
+              <ProductCard
+                key={product.id}
+                product={product}
+                wishlistActive
+                onWishlist={() => toggleWishlist(product.id)}
+                onAdd={() => addToCart(product)}
+                onQuickView={() => openProduct(product)}
+              />
             ))}
           </div>
         ) : (
           <div className="empty-state">
-            <span>Wishlist Empty</span>
-            <h3>Save gift ideas while browsing.</h3>
-            <p>Tap Wishlist on any product so you can compare and order later.</p>
+            <span>Your wishlist is empty</span>
+            <h3>Save your favourite gifts while browsing.</h3>
+            <p>Wishlist items stay on this device and can be moved to cart later.</p>
+            <a className="button primary" href="#shop">
+              Browse Gifts
+            </a>
           </div>
         )}
       </section>
 
-      <section className="section cart-checkout-section" id="cart">
+      <section className="section cart-section" id="cart">
         <div className="cart-panel">
           <div className="section-heading compact-heading">
-            <p className="eyebrow">Shopping Cart</p>
-            <h2>Your order</h2>
+            <p className="eyebrow">Cart</p>
+            <h2>Your shopping cart</h2>
           </div>
-
           {cart.length > 0 ? (
             <div className="cart-items">
               {cart.map((item) => (
-                <article className="cart-item" key={item.product.id}>
-                  <img src={item.product.image} alt={item.product.title} />
-                  <div>
-                    <h3>{item.product.title}</h3>
-                    <p>{item.product.shortDescription}</p>
-                    <strong>{formatPrice(item.product.price)}</strong>
+                <article className="cart-item" key={item.lineId}>
+                  <img src={item.product.image} alt={item.product.name} loading="lazy" onError={(event) => (event.currentTarget.src = fallbackImage)} />
+                  <div className="cart-copy">
+                    <h3>{item.product.name}</h3>
+                    <p>{item.message || item.product.description}</p>
+                    <span>{formatPrice(item.product.price)}</span>
                   </div>
-                  <div className="quantity-control" aria-label={`Quantity for ${item.product.title}`}>
-                    <button type="button" onClick={() => updateQuantity(item.product.id, -1)} aria-label="Decrease quantity">
+                  <div className="quantity-control">
+                    <button type="button" aria-label="Decrease quantity" onClick={() => updateQuantity(item.lineId, item.quantity - 1)}>
                       -
                     </button>
-                    <span>{item.quantity}</span>
-                    <button type="button" onClick={() => updateQuantity(item.product.id, 1)} aria-label="Increase quantity">
+                    <strong>{item.quantity}</strong>
+                    <button type="button" aria-label="Increase quantity" onClick={() => updateQuantity(item.lineId, item.quantity + 1)}>
                       +
                     </button>
                   </div>
-                  <div className="cart-line-actions">
-                    <button type="button" onClick={() => saveForLater(item.product)}>
-                      Save for Later
-                    </button>
-                    <button type="button" onClick={() => removeFromCart(item.product.id)}>
-                      Remove
-                    </button>
-                  </div>
+                  <strong>{formatPrice(item.product.price * item.quantity)}</strong>
+                  <button className="text-button" type="button" onClick={() => setCart((current) => current.filter((line) => line.lineId !== item.lineId))}>
+                    Remove
+                  </button>
                 </article>
               ))}
             </div>
           ) : (
             <div className="empty-state">
-              <span>Empty Cart</span>
-              <h3>Your cart is waiting for a thoughtful gift.</h3>
-              <p>Add a ready-made gift pack or build a custom gift box to continue.</p>
-              <a className="button primary" href="#popular-gift-packs">
-                Browse Gift Packs
+              <span>Cart is empty</span>
+              <h3>Your cart is ready for a thoughtful gift.</h3>
+              <p>Add a product or create a custom box to continue.</p>
+              <a className="button primary" href="#shop">
+                Continue Shopping
               </a>
             </div>
           )}
-
-          {savedForLater.length > 0 && (
-            <div className="saved-later">
-              <h3>Saved for later</h3>
-              {savedForLater.map((product) => (
-                <button
-                  type="button"
-                  key={product.id}
-                  onClick={() => {
-                    addToCart(product);
-                    setSavedForLater((current) => current.filter((item) => item.id !== product.id));
-                  }}
-                >
-                  {product.title} <span>{formatPrice(product.price)}</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
-
-        <aside className="summary-panel">
+        <aside className="order-summary">
           <h3>Order Summary</h3>
-          <div className="promo-row">
-            <label className="sr-only" htmlFor="promo-code">
-              Promo code
-            </label>
-            <input
-              id="promo-code"
-              value={promoCode}
-              onChange={(event) => setPromoCode(event.target.value)}
-              placeholder="Promo code"
-            />
-            <button type="button" onClick={applyPromoCode}>
-              Apply
-            </button>
-          </div>
-          <small className={promoApplied ? "promo-success" : "promo-hint"}>
-            {promoApplied ? "THASHY10 applied." : "Try THASHY10 for a sample discount."}
-          </small>
           <dl>
             <div>
               <dt>Subtotal</dt>
               <dd>{formatPrice(subtotal)}</dd>
             </div>
             <div>
-              <dt>Delivery charge</dt>
-              <dd>{formatPrice(deliveryCharge)}</dd>
-            </div>
-            <div>
-              <dt>Discount</dt>
-              <dd>- {formatPrice(discount)}</dd>
+              <dt>Delivery Fee</dt>
+              <dd>{deliveryFee === 0 && cart.length > 0 ? "Free" : formatPrice(deliveryFee)}</dd>
             </div>
             <div className="summary-total">
               <dt>Total</dt>
               <dd>{formatPrice(total)}</dd>
             </div>
           </dl>
-          <a className="button primary" href="#checkout">
+          <a className="button secondary full-width" href="#shop">
+            Continue Shopping
+          </a>
+          <a className="button primary full-width" href="#checkout">
             Proceed to Checkout
           </a>
-          <button className="button secondary" type="button" onClick={() => openWhatsApp(cartWhatsAppMessage())}>
-            Order Through WhatsApp
-          </button>
         </aside>
       </section>
 
       <section className="section checkout-section" id="checkout">
         <div className="section-heading">
           <p className="eyebrow">Checkout</p>
-          <h2>Simple and secure-looking checkout</h2>
-          <p>Confirm delivery details, gift message and payment preference in LKR / Rs.</p>
+          <h2>Clean, simple order details</h2>
         </div>
-
         <div className="checkout-layout">
-          <form className="checkout-form" onSubmit={handleCheckoutSubmit}>
+          <form className="checkout-form" onSubmit={handleCheckoutSubmit} noValidate>
+            {checkoutErrors.cart && <p className="form-error">{checkoutErrors.cart}</p>}
             <div className="form-grid">
-              <label className="field">
-                <span>Full Name</span>
-                <input name="fullName" value={checkoutForm.fullName} onChange={handleCheckoutInput} required />
-              </label>
-              <label className="field">
-                <span>Mobile Number</span>
-                <input name="mobile" value={checkoutForm.mobile} onChange={handleCheckoutInput} required />
-              </label>
-              <label className="field">
-                <span>Email</span>
-                <input type="email" name="email" value={checkoutForm.email} onChange={handleCheckoutInput} />
-              </label>
-              <label className="field">
-                <span>City</span>
-                <input name="city" value={checkoutForm.city} onChange={handleCheckoutInput} required />
-              </label>
-              <label className="field full-field">
-                <span>Delivery Address</span>
-                <textarea name="address" value={checkoutForm.address} onChange={handleCheckoutInput} required />
-              </label>
-              <label className="field full-field">
-                <span>Delivery Instructions</span>
-                <textarea
-                  name="instructions"
-                  value={checkoutForm.instructions}
-                  onChange={handleCheckoutInput}
-                  placeholder="Landmarks, timing, surprise instructions..."
-                />
-              </label>
-              <label className="field">
-                <span>Recipient Name</span>
-                <input name="recipientName" value={checkoutForm.recipientName} onChange={handleCheckoutInput} />
-              </label>
-              <label className="field">
-                <span>Preferred Delivery Date</span>
-                <input
-                  type="date"
-                  name="deliveryDate"
-                  value={checkoutForm.deliveryDate}
-                  onChange={handleCheckoutInput}
-                />
-              </label>
-              <label className="field full-field">
-                <span>Gift Message</span>
-                <textarea name="giftMessage" value={checkoutForm.giftMessage} onChange={handleCheckoutInput} />
-              </label>
-              <label className="field full-field">
-                <span>Payment Method</span>
-                <select name="paymentMethod" value={checkoutForm.paymentMethod} onChange={handleCheckoutInput}>
-                  <option>Bank Transfer</option>
-                  <option>Cash on Delivery</option>
-                  <option>Card Payment placeholder</option>
+              <FormField label="Full Name" error={checkoutErrors.fullName}>
+                <input name="fullName" value={checkoutForm.fullName} onChange={(event) => setCheckoutForm((current) => ({ ...current, fullName: event.target.value }))} autoComplete="name" />
+              </FormField>
+              <FormField label="Phone Number" error={checkoutErrors.phone}>
+                <input name="phone" value={checkoutForm.phone} onChange={(event) => setCheckoutForm((current) => ({ ...current, phone: event.target.value }))} inputMode="tel" autoComplete="tel" />
+              </FormField>
+              <FormField label="Email" error={checkoutErrors.email}>
+                <input name="email" type="email" value={checkoutForm.email} onChange={(event) => setCheckoutForm((current) => ({ ...current, email: event.target.value }))} autoComplete="email" />
+              </FormField>
+              <FormField label="City" error={checkoutErrors.city}>
+                <input name="city" value={checkoutForm.city} onChange={(event) => setCheckoutForm((current) => ({ ...current, city: event.target.value }))} />
+              </FormField>
+              <FormField label="District" error={checkoutErrors.district}>
+                <select name="district" value={checkoutForm.district} onChange={(event) => setCheckoutForm((current) => ({ ...current, district: event.target.value }))}>
+                  <option value="">Select district</option>
+                  {sriLankanDistricts.map((district) => (
+                    <option key={district}>{district}</option>
+                  ))}
                 </select>
-              </label>
+              </FormField>
+              <FormField label="Payment Options">
+                <select name="paymentMethod" value={checkoutForm.paymentMethod} onChange={(event) => setCheckoutForm((current) => ({ ...current, paymentMethod: event.target.value }))}>
+                  <option>Cash on Delivery</option>
+                  <option>Bank Transfer</option>
+                  <option>Online Payment placeholder</option>
+                </select>
+              </FormField>
+              <FormField label="Delivery Address" error={checkoutErrors.address} full>
+                <textarea name="address" value={checkoutForm.address} onChange={(event) => setCheckoutForm((current) => ({ ...current, address: event.target.value }))} />
+              </FormField>
+              <FormField label="Special Instructions" full>
+                <textarea name="instructions" value={checkoutForm.instructions} onChange={(event) => setCheckoutForm((current) => ({ ...current, instructions: event.target.value }))} />
+              </FormField>
             </div>
-            <button className="button primary checkout-button" type="submit" disabled={cart.length === 0}>
-              Confirm Checkout
+            <button className="button primary full-width" type="submit">
+              Place Order
             </button>
           </form>
 
           <aside className="checkout-summary">
-            <h3>Before confirmation</h3>
-            <ul>
-              {cart.length > 0 ? (
-                cart.map((item) => (
-                  <li key={item.product.id}>
-                    <span>{item.product.title} x {item.quantity}</span>
-                    <strong>{formatPrice(item.product.price * item.quantity)}</strong>
-                  </li>
-                ))
-              ) : (
-                <li>
-                  <span>No products selected</span>
-                  <strong>{formatPrice(0)}</strong>
-                </li>
-              )}
-            </ul>
-            <div className="checkout-total">
-              <span>Total Amount</span>
-              <strong>{formatPrice(total)}</strong>
+            <h3>Order summary</h3>
+            {(lastOrder?.items.length ? lastOrder.items : cart).map((item) => (
+              <div className="summary-line" key={item.lineId}>
+                <span>{item.product.name} x {item.quantity}</span>
+                <strong>{formatPrice(item.product.price * item.quantity)}</strong>
+              </div>
+            ))}
+            <div className="summary-line">
+              <span>Delivery</span>
+              <strong>{formatPrice(deliveryFee)}</strong>
             </div>
-            <p>Payment confirmation and final delivery timing can be completed through WhatsApp.</p>
+            <div className="summary-line summary-total">
+              <span>Total</span>
+              <strong>{formatPrice(lastOrder?.total ?? total)}</strong>
+            </div>
+            <a className="button secondary full-width" href={buildWhatsAppUrl(orderMessage)} target="_blank" rel="noreferrer">
+              WhatsApp Us
+            </a>
           </aside>
         </div>
-
-        {orderSuccess && (
+        {lastOrder && (
           <div className="success-panel" role="status">
-            <span>Successful Order Confirmation</span>
-            <h3>Thank you. Your order details are ready.</h3>
-            <p>
-              Continue on WhatsApp to confirm product availability, delivery charge and payment
-              instructions with Thashy Gift Hub.
-            </p>
-            <button className="button primary" type="button" onClick={() => openWhatsApp(cartWhatsAppMessage())}>
-              Send Order on WhatsApp
-            </button>
+            <span>Success</span>
+            <h3>Order {lastOrder.id} is ready for confirmation.</h3>
+            <p>We saved your order summary on this page. Send it on WhatsApp or track the status below.</p>
           </div>
         )}
       </section>
 
-      <section className="section order-tracking-section">
-        <div className="tracking-card">
-          <div>
-            <p className="eyebrow">Customer account</p>
-            <h2>Order tracking placeholder</h2>
-            <p>Customers can later sign in to view wishlist, order history and delivery updates.</p>
+      <section className="section tracking-section" id="tracking">
+        <div className="section-heading">
+          <p className="eyebrow">Order Tracking</p>
+          <h2>Follow your gift from order to delivery</h2>
+        </div>
+        <form
+          className="tracking-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setTrackingStatus(trackInput.trim().length >= 6 ? "found" : "error");
+          }}
+        >
+          <label className="sr-only" htmlFor="tracking-id">
+            Order number
+          </label>
+          <input id="tracking-id" value={trackInput} onChange={(event) => setTrackInput(event.target.value)} placeholder="Example: TGH-2026-1234" />
+          <button className="button primary" type="submit">
+            Track Order
+          </button>
+        </form>
+        {trackingStatus === "error" && <p className="form-error">Enter a valid order number to view tracking.</p>}
+        <div className="timeline" aria-label="Order status timeline">
+          {orderSteps.map((step, index) => (
+            <div className={trackingStatus === "found" && index <= 2 ? "timeline-step active" : "timeline-step"} key={step}>
+              <span>{index + 1}</span>
+              <strong>{step}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="section account-section" id="account">
+        <div className="section-heading">
+          <p className="eyebrow">User Account</p>
+          <h2>Your Thashy dashboard</h2>
+        </div>
+        <div className="account-layout">
+          <nav className="account-tabs" aria-label="Account sections">
+            {["Profile", "My Orders", "Wishlist", "Saved Addresses", "Order Tracking", "Logout"].map((tab) => (
+              <button className={accountTab === tab ? "active" : ""} type="button" key={tab} onClick={() => setAccountTab(tab)}>
+                {tab}
+              </button>
+            ))}
+          </nav>
+          <div className="account-panel">
+            <h3>{accountTab}</h3>
+            {accountTab === "Profile" && <p>Guest customer profile for quick checkout. Sign-in can be connected in the next backend phase.</p>}
+            {accountTab === "My Orders" && <p>{lastOrder ? `${lastOrder.id} - ${formatPrice(lastOrder.total)} - Preparing` : "No orders yet."}</p>}
+            {accountTab === "Wishlist" && <p>{wishlistProducts.length ? `${wishlistProducts.length} saved gifts in your wishlist.` : "Your wishlist is empty."}</p>}
+            {accountTab === "Saved Addresses" && <p>{checkoutForm.address || "No saved delivery address yet."}</p>}
+            {accountTab === "Order Tracking" && <p>{lastOrder ? `${lastOrder.id} is currently Preparing.` : "Place an order to see tracking here."}</p>}
+            {accountTab === "Logout" && <p>You are browsing as a guest. Your cart and wishlist stay on this device.</p>}
           </div>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              setAccountOpen(true);
-            }}
-          >
-            <label className="sr-only" htmlFor="tracking-number">
-              Order tracking number
-            </label>
-            <input id="tracking-number" placeholder="Enter order number" />
+        </div>
+      </section>
+
+      <section className="section reviews-section">
+        <div className="section-heading split-heading">
+          <div>
+            <p className="eyebrow">Customer Reviews</p>
+            <h2>Little gifts, lovely reactions</h2>
+          </div>
+          <span className="result-count">★★★★★ 4.9 average</span>
+        </div>
+        <div className="review-track">
+          {reviews.map(([name, review, rating]) => (
+            <article className="review-card" key={name}>
+              <span>{"★".repeat(rating)}</span>
+              <p>“{review}”</p>
+              <strong>{name}</strong>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section about-section" id="about">
+        <div className="about-media">
+          <img src="https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=1100&q=82" alt="Gift shopping and wrapping details" loading="lazy" onError={(event) => (event.currentTarget.src = fallbackImage)} />
+        </div>
+        <div>
+          <p className="eyebrow">About Thashy Gift Hub</p>
+          <h2>Affordable, cute and meaningful gifts with a personal touch</h2>
+          <p>
+            Thashy Gift Hub creates ready-made and custom gift boxes for birthdays, anniversaries, Valentine&apos;s Day, weddings, graduations and everyday surprises across Sri Lanka.
+          </p>
+          <div className="about-points">
+            {["Affordable prices", "Custom gift boxes", "Wide product selection", "Personal touch", "Sri Lankan delivery"].map((point) => (
+              <span key={point}>{point}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section contact-section" id="contact">
+        <div className="section-heading">
+          <p className="eyebrow">Contact</p>
+          <h2>Need help choosing a gift?</h2>
+        </div>
+        <div className="contact-layout">
+          <div className="contact-details">
+            <a href="tel:+94771234567">Phone: +94 77 123 4567</a>
+            <a href={buildWhatsAppUrl("Hello Thashy Gift Hub, I need help choosing a gift.")} target="_blank" rel="noreferrer">
+              WhatsApp: +94 77 123 4567
+            </a>
+            <a href="mailto:hello@thashygifthub.lk">Email: hello@thashygifthub.lk</a>
+            <span>Business location: Colombo, Sri Lanka</span>
+            <span>Social: Facebook · Instagram · TikTok</span>
+            <a className="button primary" href={buildWhatsAppUrl("Hello Thashy Gift Hub, I want to create a custom gift.")} target="_blank" rel="noreferrer">
+              WhatsApp Us
+            </a>
+          </div>
+          <form className="contact-form" onSubmit={handleContactSubmit} noValidate>
+            <FormField label="Contact Name">
+              <input value={contactForm.name} onChange={(event) => setContactForm((current) => ({ ...current, name: event.target.value }))} />
+            </FormField>
+            <FormField label="Phone">
+              <input value={contactForm.phone} onChange={(event) => setContactForm((current) => ({ ...current, phone: event.target.value }))} inputMode="tel" />
+            </FormField>
+            <FormField label="Message" full>
+              <textarea value={contactForm.message} onChange={(event) => setContactForm((current) => ({ ...current, message: event.target.value }))} />
+            </FormField>
+            {contactStatus === "error" && <p className="form-error">Please add your name and message.</p>}
+            {contactStatus === "success" && <p className="form-success">Message ready. We will reply through your preferred contact method.</p>}
             <button className="button primary" type="submit">
-              Track Order
+              Send Message
             </button>
           </form>
         </div>
       </section>
 
-      <section className="newsletter-section">
+      <footer className="footer">
         <div>
-          <p className="eyebrow">Newsletter</p>
-          <h2>Stay Updated with Thashy Gift Hub</h2>
-          <p>Get updates about new gifts, special offers and seasonal collections.</p>
-        </div>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            setNewsletterDone(true);
-          }}
-        >
-          <label className="sr-only" htmlFor="newsletter-email">
-            Email address
-          </label>
-          <input
-            id="newsletter-email"
-            type="email"
-            placeholder="Your email address"
-            value={newsletterEmail}
-            onChange={(event) => setNewsletterEmail(event.target.value)}
-            required
-          />
-          <button className="button primary" type="submit">
-            Subscribe
-          </button>
-          {newsletterDone && <small role="status">You are on the list for new little gift moments.</small>}
-        </form>
-      </section>
-
-      <footer className="footer" id="contact">
-        <div className="footer-brand">
-          <a className="brand" href="#home" aria-label="Thashy Gift Hub home">
+          <a className="brand footer-brand" href="#home">
             <span className="brand-mark">TG</span>
             <span>
               <strong>Thashy Gift Hub</strong>
               <small>Tell Us Your Budget, We Create the Gift.</small>
             </span>
           </a>
-          <p>Making every little moment special with thoughtful and affordable gifts.</p>
+          <p>Affordable, cute and meaningful Sri Lankan gifts for every special moment.</p>
         </div>
-        <FooterColumn
-          title="Quick Links"
-          links={["Home", "Shop", "Gift Packs", "Build Your Gift", "About Us", "Contact"]}
-        />
-        <FooterColumn
-          title="Customer Support"
-          links={["Delivery Information", "Returns Policy", "Terms & Conditions", "Privacy Policy", "FAQ"]}
-        />
-        <div className="footer-column">
-          <h3>Social Media</h3>
-          <a href="#contact">Instagram</a>
-          <a href="#contact">TikTok</a>
-          <a href="#contact">Facebook</a>
-          <a href={buildWhatsAppUrl("Hello Thashy Gift Hub, I need help choosing a gift.")}>WhatsApp</a>
-          <div className="contact-list">
-            <span>Phone: +94 77 123 4567</span>
-            <span>WhatsApp: +94 77 123 4567</span>
-            <span>Email: hello@thashygifthub.lk</span>
-          </div>
-        </div>
-        <div className="footer-bottom">© Thashy Gift Hub. All Rights Reserved.</div>
+        <FooterColumn title="Quick Links" links={[["Home", "#home"], ["Shop", "#shop"], ["Gift Boxes", "#gift-boxes"], ["About", "#about"], ["Contact", "#contact"]]} />
+        <FooterColumn title="Customer Service" links={[["Shipping", "#contact"], ["Returns", "#contact"], ["FAQ", "#contact"], ["Privacy Policy", "#contact"], ["Terms & Conditions", "#contact"]]} />
+        <FooterColumn title="Follow Us" links={[["Facebook", "#contact"], ["Instagram", "#contact"], ["TikTok", "#contact"], ["WhatsApp", buildWhatsAppUrl("Hello Thashy Gift Hub.")]]} />
+        <div className="footer-bottom">© 2026 Thashy Gift Hub. All Rights Reserved.</div>
       </footer>
 
-      <a
-        className="floating-whatsapp"
-        href={buildWhatsAppUrl("Hello Thashy Gift Hub, I want to order a gift.")}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Order through WhatsApp"
-      >
-        WhatsApp
-      </a>
-
-      <nav className="mobile-bottom-nav" aria-label="Mobile quick navigation">
-        <a href="#home">Home</a>
-        <a href="#shop">Shop</a>
-        <a href="#wishlist">Wishlist</a>
-        <a href="#cart">Cart {cartCount}</a>
-        <button type="button" onClick={() => setAccountOpen(true)}>
-          Account
-        </button>
+      <nav className="mobile-dock" aria-label="Mobile quick actions">
+        <a href="#shop" aria-label="Search and shop gifts">⌕</a>
+        <a href="#wishlist" aria-label="Wishlist">♡</a>
+        <a href="#cart" aria-label={`Cart with ${cartCount} items`}>🛒</a>
       </nav>
 
       {selectedProduct && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="product-detail-title">
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="quick-view-title">
           <div className="product-modal">
-            <button className="modal-close" type="button" onClick={() => setSelectedProduct(null)} aria-label="Close">
-              Close
+            <button className="modal-close" type="button" onClick={() => setSelectedProduct(null)} aria-label="Close quick view">
+              ×
             </button>
-            <div className="gallery">
-              <img src={selectedImage || selectedProduct.image} alt={selectedProduct.title} />
-              <div className="gallery-thumbs">
-                {[selectedProduct, ...relatedProducts].slice(0, 4).map((product) => (
-                  <button type="button" key={product.id} onClick={() => setSelectedImage(product.image)}>
-                    <img src={product.image} alt={product.title} />
-                  </button>
-                ))}
-              </div>
-            </div>
+            <img src={selectedProduct.image} alt={selectedProduct.name} loading="lazy" onError={(event) => (event.currentTarget.src = fallbackImage)} />
             <div className="product-detail">
-              <span className="detail-badge">{selectedProduct.availability}</span>
-              <h2 id="product-detail-title">{selectedProduct.title}</h2>
-              <strong className="detail-price">{formatPrice(selectedProduct.price)}</strong>
-              <p>{selectedProduct.shortDescription}</p>
-              <p>{selectedProduct.detailedDescription}</p>
-              <div className="rating">★★★★★ <span>{selectedProduct.rating} from {selectedProduct.reviews} reviews</span></div>
-              <h3>Included items</h3>
+              <span>{selectedProduct.badge}</span>
+              <h2 id="quick-view-title">{selectedProduct.name}</h2>
+              <p>{selectedProduct.description}</p>
+              <strong>{formatPrice(selectedProduct.price)}</strong>
+              <div className="rating">★★★★★ {selectedProduct.rating} ({selectedProduct.reviews})</div>
               <ul>
-                {selectedProduct.included.map((item) => (
-                  <li key={item}>{item}</li>
+                {selectedProduct.details.map((detail) => (
+                  <li key={detail}>{detail}</li>
                 ))}
               </ul>
-              <div className="detail-controls">
+              <div className="modal-actions">
                 <div className="quantity-control">
                   <button type="button" onClick={() => setQuickQuantity((value) => Math.max(1, value - 1))}>
                     -
                   </button>
-                  <span>{quickQuantity}</span>
+                  <strong>{quickQuantity}</strong>
                   <button type="button" onClick={() => setQuickQuantity((value) => Math.min(20, value + 1))}>
                     +
                   </button>
@@ -1762,86 +1553,10 @@ export default function Home() {
                 <button className="button primary" type="button" onClick={() => addToCart(selectedProduct, quickQuantity)}>
                   Add to Cart
                 </button>
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => {
-                    addToCart(selectedProduct, quickQuantity);
-                    document.getElementById("checkout")?.scrollIntoView({ behavior: "smooth" });
-                    setSelectedProduct(null);
-                  }}
-                >
-                  Buy Now
+                <button className="button secondary" type="button" onClick={() => toggleWishlist(selectedProduct.id)}>
+                  {wishlist.has(selectedProduct.id) ? "Remove Wishlist" : "Add Wishlist"}
                 </button>
               </div>
-              <div className="detail-link-row">
-                <button type="button" onClick={() => toggleWishlist(selectedProduct.id)}>
-                  {wishlist.has(selectedProduct.id) ? "Remove from Wishlist" : "Add to Wishlist"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    openWhatsApp(
-                      `Hello Thashy Gift Hub, I want to order ${selectedProduct.title} (${formatPrice(
-                        selectedProduct.price,
-                      )}). Quantity: ${quickQuantity}`,
-                    )
-                  }
-                >
-                  WhatsApp Order
-                </button>
-              </div>
-              {relatedProducts.length > 0 && (
-                <div className="related-products">
-                  <h3>Related Products</h3>
-                  <div>
-                    {relatedProducts.map((product) => (
-                      <button type="button" key={product.id} onClick={() => openProduct(product)}>
-                        {product.title}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="related-products">
-                <h3>You May Also Like</h3>
-                <div>
-                  {allProducts.slice(4, 7).map((product) => (
-                    <button type="button" key={product.id} onClick={() => openProduct(product)}>
-                      {product.title}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="review-list">
-                <h3>Customer Reviews</h3>
-                <p>“Beautifully packed and arrived on time.”</p>
-                <p>“The gift looked more premium than the price.”</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {accountOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="account-title">
-          <div className="account-modal">
-            <button className="modal-close" type="button" onClick={() => setAccountOpen(false)} aria-label="Close">
-              Close
-            </button>
-            <p className="eyebrow">Customer account</p>
-            <h2 id="account-title">Account area coming soon</h2>
-            <p>
-              This placeholder is ready for customer login, wishlist sync, saved addresses and
-              order tracking in the next backend phase.
-            </p>
-            <div className="account-actions">
-              <a className="button primary" href="#wishlist" onClick={() => setAccountOpen(false)}>
-                View Wishlist
-              </a>
-              <a className="button secondary" href="#cart" onClick={() => setAccountOpen(false)}>
-                View Cart
-              </a>
             </div>
           </div>
         </div>
@@ -1853,53 +1568,39 @@ export default function Home() {
 function ProductCard({
   product,
   wishlistActive,
-  compact,
   onWishlist,
   onAdd,
-  onView,
+  onQuickView,
 }: {
   product: Product;
   wishlistActive: boolean;
-  compact?: boolean;
   onWishlist: () => void;
   onAdd: () => void;
-  onView: () => void;
+  onQuickView: () => void;
 }) {
   return (
-    <article className={`product-card ${compact ? "compact-product-card" : ""}`}>
+    <article className="product-card">
       <div className="product-image">
-        <img src={product.image} alt={product.title} />
-        {product.badge && <span className="badge">{product.badge}</span>}
-        {product.availability === "Only a Few Left" && <span className="stock-alert">Only a Few Left</span>}
-        <button
-          type="button"
-          className={`wishlist-button ${wishlistActive ? "active" : ""}`}
-          aria-label={`${wishlistActive ? "Remove" : "Add"} ${product.title} ${wishlistActive ? "from" : "to"} wishlist`}
-          onClick={onWishlist}
-        >
+        <img src={product.image} alt={product.name} loading="lazy" onError={(event) => (event.currentTarget.src = fallbackImage)} />
+        <span className="badge">{product.badge}</span>
+        <button className={wishlistActive ? "wishlist-button active" : "wishlist-button"} type="button" onClick={onWishlist} aria-label={`${wishlistActive ? "Remove from" : "Add to"} wishlist`}>
           {wishlistActive ? "♥" : "♡"}
         </button>
       </div>
       <div className="product-copy">
-        <div>
-          <span className="product-category">{product.category}</span>
-          <h3>{product.title}</h3>
-          <p>{product.shortDescription}</p>
-        </div>
-        <div className="product-meta">
+        <span>{product.category}</span>
+        <h3>{product.name}</h3>
+        <p>{product.description}</p>
+        <div className="price-row">
           <strong>{formatPrice(product.price)}</strong>
-          {product.oldPrice && <del>{formatPrice(product.oldPrice)}</del>}
-          <span>{product.rating} stars</span>
+          {product.compareAt && <del>{formatPrice(product.compareAt)}</del>}
         </div>
-        <div className="stock-row">
-          <span>{product.availability}</span>
-          <span>{product.reviews} reviews</span>
-        </div>
+        <div className="rating">★★★★★ <small>{product.rating} · {product.availability}</small></div>
         <div className="product-actions">
           <button type="button" onClick={onAdd}>
-            {compact ? "Quick Add" : "Add to Cart"}
+            Add to Cart
           </button>
-          <button type="button" onClick={onView}>
+          <button type="button" onClick={onQuickView}>
             Quick View
           </button>
         </div>
@@ -1916,28 +1617,59 @@ function FilterSelect({
 }: {
   label: string;
   value: string;
-  options: string[];
+  options: readonly string[];
   onChange: (value: string) => void;
 }) {
   return (
     <label className="filter-control">
       <span>{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
+      <select value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)}>
         {options.map((option) => (
-          <option key={option}>{option}</option>
+          <option key={option} value={option}>
+            {option}
+          </option>
         ))}
       </select>
     </label>
   );
 }
 
-function FooterColumn({ title, links }: { title: string; links: string[] }) {
+function BuilderStep({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="builder-step">
+      <h3>{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function FormField({
+  label,
+  error,
+  full,
+  children,
+}: {
+  label: string;
+  error?: string;
+  full?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className={full ? "field full-field" : "field"}>
+      <span>{label}</span>
+      {children}
+      {error && <small className="form-error">{error}</small>}
+    </label>
+  );
+}
+
+function FooterColumn({ title, links }: { title: string; links: [string, string][] }) {
   return (
     <div className="footer-column">
       <h3>{title}</h3>
-      {links.map((link) => (
-        <a key={link} href={`#${link.toLowerCase().replaceAll(" ", "-")}`}>
-          {link}
+      {links.map(([label, href]) => (
+        <a href={href} key={label}>
+          {label}
         </a>
       ))}
     </div>

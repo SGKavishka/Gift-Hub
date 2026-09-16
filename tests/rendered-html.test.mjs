@@ -35,14 +35,16 @@ test("server-renders the Thashy Gift Hub storefront", async () => {
   const html = await response.text();
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.match(html, /<title>Thashy Gift Hub \| Tell Us Your Budget, We Create the Gift<\/title>/i);
-  assert.match(html, /Make Every Moment Special with Thashy Gift Hub/);
+  assert.match(html, /Find the Perfect Gift/);
   assert.match(html, /Tell Us Your Budget, We Create the Gift/);
-  assert.match(html, /Popular Gift Packs/);
-  assert.match(html, /Cute Little Things/);
-  assert.match(html, /Create My Gift/);
-  assert.match(html, /Shopping Cart/);
+  assert.match(html, /Shop by Category/);
+  assert.match(html, /Build Your Own Gift Box/);
+  assert.match(html, /Not Sure What to Buy/);
+  assert.match(html, /Saved gift ideas/);
+  assert.match(html, /Your shopping cart/);
   assert.match(html, /Checkout/);
-  assert.match(html, /Follow Our Little Gift Moments/);
+  assert.match(html, /Order Tracking/);
+  assert.match(html, /Customer Reviews/);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site|react-loading-skeleton/);
 });
 
