@@ -68,9 +68,9 @@ const fallbackImage =
 
 const heroSlides = [
   {
-    kicker: "Legendary gift drop",
-    title: "Custom boxes, tuned to your budget",
-    copy: "Build a surprise loadout with keepsakes, sweets, flowers and a personal note.",
+    kicker: "Personalized gifting",
+    title: "Custom boxes tailored to your budget",
+    copy: "Create a thoughtful surprise with keepsakes, sweets, flowers and a personal note.",
     image:
       "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=1400&q=88",
     alt: "Premium wrapped gift boxes with ribbons",
@@ -78,8 +78,8 @@ const heroSlides = [
     tag: "Budget Builder",
   },
   {
-    kicker: "Couple quest unlocked",
-    title: "Romantic sets with cinematic detail",
+    kicker: "Curated couple gifts",
+    title: "Romantic sets with elegant detail",
     copy: "Match bracelets, roses, chocolates and message cards in one ready-to-gift box.",
     image:
       "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=1400&q=88",
@@ -88,9 +88,9 @@ const heroSlides = [
     tag: "Couple Gifts",
   },
   {
-    kicker: "Birthday power-up",
-    title: "Photo-ready birthday surprises",
-    copy: "Fast, colorful and neatly packed gift picks for friends, family and special people.",
+    kicker: "Birthday celebrations",
+    title: "Beautiful birthday surprises",
+    copy: "Colorful, neatly packed gift picks for friends, family and special people.",
     image:
       "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=1400&q=88",
     alt: "Birthday cake and party gift arrangement",
@@ -851,9 +851,9 @@ export default function Home() {
   return (
     <main className="site-shell">
       <div className="top-bar">
-        <span>⚡ Free delivery available for selected areas</span>
-        <span>◆ Custom gift drops available</span>
-        <span>✦ Islandwide party-ready packing</span>
+        <span>Free delivery available for selected areas</span>
+        <span>Custom gift boxes available</span>
+        <span>Islandwide delivery and careful packing</span>
       </div>
 
       <header className="site-header">
@@ -949,7 +949,7 @@ export default function Home() {
           <h1>Find the Perfect Gift</h1>
           <p className="hero-subtitle">Tell Us Your Budget, We Create the Gift.</p>
           <p className="hero-description">
-            Cute, affordable and meaningful gifts redesigned like premium loot drops for birthdays, love quests and everyday wins.
+            Cute, affordable and meaningful gifts presented with a polished, professional shopping experience for every special moment.
           </p>
           <div className="hero-actions">
             <a className="button primary" href="#shop">
@@ -960,7 +960,7 @@ export default function Home() {
             </a>
           </div>
           <div className="hero-stats" aria-label="Store highlights">
-            <span>LVL 99 gift curation</span>
+            <span>Professional gift curation</span>
             <span>Custom boxes from LKR 1,000</span>
             <span>Islandwide delivery</span>
           </div>
@@ -991,7 +991,7 @@ export default function Home() {
               <span>{currentHeroSlide.tag}</span>
               <strong>{currentHeroSlide.metric}</strong>
             </div>
-            <p>Live gift mission briefing</p>
+            <p>Featured collection</p>
           </div>
           <div className="hero-controls" aria-label="Hero slider controls">
             <button
@@ -1030,10 +1030,10 @@ export default function Home() {
 
       <section className="offer-strip" aria-label="Special offer collections">
         {[
-          "Budget Drops Under LKR 2,000",
-          "Neon Cute Gifts for Her",
-          "Dark Mode Gifts for Him",
-          "Couple Co-op Collection",
+          "Gifts Under LKR 2,000",
+          "Elegant Gifts for Her",
+          "Premium Gifts for Him",
+          "Couple Collection",
           "Build Your Own Gift Box",
         ].map((offer) => (
           <button

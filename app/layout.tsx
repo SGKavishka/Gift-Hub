@@ -45,7 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: "/og.png",
           width: 1200,
           height: 630,
-          alt: "Thashy Gift Hub premium gaming-style gift box preview",
+          alt: "Thashy Gift Hub professional gift box preview",
         },
       ],
     },
