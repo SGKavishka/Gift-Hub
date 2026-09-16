@@ -55,6 +55,8 @@ type ContactForm = {
 type LastOrder = {
   id: string;
   customer: string;
+  subtotal: number;
+  deliveryFee: number;
   total: number;
   items: CartItem[];
   paymentMethod: string;
@@ -63,6 +65,39 @@ type LastOrder = {
 const whatsappNumber = "94771234567";
 const fallbackImage =
   "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=900&q=80";
+
+const heroSlides = [
+  {
+    kicker: "Legendary gift drop",
+    title: "Custom boxes, tuned to your budget",
+    copy: "Build a surprise loadout with keepsakes, sweets, flowers and a personal note.",
+    image:
+      "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=1400&q=88",
+    alt: "Premium wrapped gift boxes with ribbons",
+    metric: "LKR 1,000+",
+    tag: "Budget Builder",
+  },
+  {
+    kicker: "Couple quest unlocked",
+    title: "Romantic sets with cinematic detail",
+    copy: "Match bracelets, roses, chocolates and message cards in one ready-to-gift box.",
+    image:
+      "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=1400&q=88",
+    alt: "Romantic gift box with red heart decor",
+    metric: "4.9 ★",
+    tag: "Couple Gifts",
+  },
+  {
+    kicker: "Birthday power-up",
+    title: "Photo-ready birthday surprises",
+    copy: "Fast, colorful and neatly packed gift picks for friends, family and special people.",
+    image:
+      "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=1400&q=88",
+    alt: "Birthday cake and party gift arrangement",
+    metric: "1K+ orders",
+    tag: "Birthday Picks",
+  },
+] as const;
 
 const navItems = [
   ["Home", "home"],
@@ -471,6 +506,7 @@ const productById = new Map(products.map((product) => [product.id, product]));
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({
     category: "All",
@@ -511,6 +547,7 @@ export default function Home() {
   });
   const [checkoutErrors, setCheckoutErrors] = useState<Record<string, string>>({});
   const [lastOrder, setLastOrder] = useState<LastOrder | null>(null);
+  const [orderSequence, setOrderSequence] = useState(1000);
   const [trackInput, setTrackInput] = useState("");
   const [trackingStatus, setTrackingStatus] = useState<"idle" | "found" | "error">("idle");
   const [accountTab, setAccountTab] = useState("Profile");
@@ -548,6 +585,14 @@ export default function Home() {
   useEffect(() => {
     if (hydrated) localStorage.setItem("thashy-cart", JSON.stringify(cart));
   }, [cart, hydrated]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveHeroSlide((current) => (current + 1) % heroSlides.length);
+    }, 5600);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   const categoryOptions = ["All", ...categoryCards.map((category) => category[1])];
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -627,6 +672,10 @@ export default function Home() {
   }, [finder]);
 
   const recommendedProducts = finderResults.length > 0 ? finderResults : products.slice(0, 4);
+  const currentHeroSlide = heroSlides[activeHeroSlide];
+  const checkoutPreviewItems = lastOrder?.items.length ? lastOrder.items : cart;
+  const checkoutDeliveryFee = lastOrder ? lastOrder.deliveryFee : deliveryFee;
+  const checkoutTotal = lastOrder?.total ?? total;
 
   const addToCart = (product: Product, quantity = 1, message?: string) => {
     setCart((current) => {
@@ -758,9 +807,14 @@ export default function Home() {
     setCheckoutErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
+    const orderId = `TGH-2026-${String(orderSequence).padStart(4, "0")}`;
+    setOrderSequence((current) => current + 1);
+
     const order: LastOrder = {
-      id: `TGH-2026-${String(Math.floor(1000 + Math.random() * 9000))}`,
+      id: orderId,
       customer: sanitizeText(checkoutForm.fullName),
+      subtotal,
+      deliveryFee,
       total,
       items: cart,
       paymentMethod: checkoutForm.paymentMethod,
@@ -790,15 +844,16 @@ export default function Home() {
     `Name: ${sanitizeText(checkoutForm.fullName) || "Not provided"}`,
     `Phone: ${sanitizeText(checkoutForm.phone) || "Not provided"}`,
     `Address: ${sanitizeText(checkoutForm.address) || "Not provided"}`,
-    `Items: ${cart.map((item) => `${item.product.name} x ${item.quantity}`).join(", ") || "Not selected"}`,
-    `Total: ${formatPrice(total)}`,
+    `Items: ${checkoutPreviewItems.map((item) => `${item.product.name} x ${item.quantity}`).join(", ") || "Not selected"}`,
+    `Total: ${formatPrice(checkoutTotal)}`,
   ].join("\n");
 
   return (
     <main className="site-shell">
       <div className="top-bar">
-        <span>🎁 Free delivery available for selected areas</span>
-        <span>💝 Custom gifts available</span>
+        <span>⚡ Free delivery available for selected areas</span>
+        <span>◆ Custom gift drops available</span>
+        <span>✦ Islandwide party-ready packing</span>
       </div>
 
       <header className="site-header">
@@ -846,11 +901,11 @@ export default function Home() {
         <button
           className="mobile-icon-button"
           type="button"
-          aria-label="Open navigation menu"
+          aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={mobileMenuOpen}
           onClick={() => setMobileMenuOpen((open) => !open)}
         >
-          ☰
+          {mobileMenuOpen ? "×" : "☰"}
         </button>
 
         {mobileMenuOpen && (
@@ -888,11 +943,14 @@ export default function Home() {
       </header>
 
       <section className="hero" id="home">
+        <div className="hero-ambient" aria-hidden="true" />
         <div className="hero-copy">
           <p className="eyebrow">Sri Lankan gift and lifestyle store</p>
-          <h1>Find the Perfect Gift 🎁</h1>
+          <h1>Find the Perfect Gift</h1>
           <p className="hero-subtitle">Tell Us Your Budget, We Create the Gift.</p>
-          <p className="hero-description">Cute, affordable and meaningful gifts for every special moment.</p>
+          <p className="hero-description">
+            Cute, affordable and meaningful gifts redesigned like premium loot drops for birthdays, love quests and everyday wins.
+          </p>
           <div className="hero-actions">
             <a className="button primary" href="#shop">
               Shop Gifts
@@ -902,34 +960,80 @@ export default function Home() {
             </a>
           </div>
           <div className="hero-stats" aria-label="Store highlights">
-            <span>1,000+ happy orders</span>
+            <span>LVL 99 gift curation</span>
             <span>Custom boxes from LKR 1,000</span>
             <span>Islandwide delivery</span>
           </div>
         </div>
-        <div className="hero-visual">
-          <img
-            src="https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=1200&q=86"
-            alt="Premium wrapped gift boxes with ribbons"
-            loading="eager"
-            onError={(event) => {
-              event.currentTarget.src = fallbackImage;
-            }}
-          />
-          <div className="hero-note">
-            <span>Signature service</span>
-            <strong>Budget-first gift curation</strong>
-            <p>Tell us the person, occasion and budget. We handle the sweet part.</p>
+
+        <div className="hero-visual" aria-label="Featured gift collections">
+          <div className="hero-slider">
+            {heroSlides.map((slide, slideIndex) => (
+              <article className={slideIndex === activeHeroSlide ? "hero-slide active" : "hero-slide"} key={slide.title}>
+                <img
+                  src={slide.image}
+                  alt={slide.alt}
+                  loading={slideIndex === 0 ? "eager" : "lazy"}
+                  onError={(event) => {
+                    event.currentTarget.src = fallbackImage;
+                  }}
+                />
+                <div className="hero-slide-overlay">
+                  <span>{slide.kicker}</span>
+                  <h2>{slide.title}</h2>
+                  <p>{slide.copy}</p>
+                </div>
+              </article>
+            ))}
           </div>
+          <div className="hero-hud">
+            <div>
+              <span>{currentHeroSlide.tag}</span>
+              <strong>{currentHeroSlide.metric}</strong>
+            </div>
+            <p>Live gift mission briefing</p>
+          </div>
+          <div className="hero-controls" aria-label="Hero slider controls">
+            <button
+              className="hero-arrow"
+              type="button"
+              aria-label="Show previous hero slide"
+              onClick={() => setActiveHeroSlide((current) => (current - 1 + heroSlides.length) % heroSlides.length)}
+            >
+              ‹
+            </button>
+            <div className="hero-dots" role="tablist" aria-label="Hero slides">
+              {heroSlides.map((slide, slideIndex) => (
+                <button
+                  className={slideIndex === activeHeroSlide ? "active" : ""}
+                  type="button"
+                  role="tab"
+                  aria-selected={slideIndex === activeHeroSlide}
+                  aria-label={`Show ${slide.tag}`}
+                  key={slide.tag}
+                  onClick={() => setActiveHeroSlide(slideIndex)}
+                />
+              ))}
+            </div>
+            <button
+              className="hero-arrow"
+              type="button"
+              aria-label="Show next hero slide"
+              onClick={() => setActiveHeroSlide((current) => (current + 1) % heroSlides.length)}
+            >
+              ›
+            </button>
+          </div>
+          <div className="hero-progress" aria-hidden="true" key={activeHeroSlide} />
         </div>
       </section>
 
       <section className="offer-strip" aria-label="Special offer collections">
         {[
-          "Gifts Under LKR 2,000 🎁",
-          "Cute Gifts for Her 💝",
-          "Gifts for Him 🖤",
-          "Couple Collection 💑",
+          "Budget Drops Under LKR 2,000",
+          "Neon Cute Gifts for Her",
+          "Dark Mode Gifts for Him",
+          "Couple Co-op Collection",
           "Build Your Own Gift Box",
         ].map((offer) => (
           <button
@@ -1343,7 +1447,7 @@ export default function Home() {
 
           <aside className="checkout-summary">
             <h3>Order summary</h3>
-            {(lastOrder?.items.length ? lastOrder.items : cart).map((item) => (
+            {checkoutPreviewItems.map((item) => (
               <div className="summary-line" key={item.lineId}>
                 <span>{item.product.name} x {item.quantity}</span>
                 <strong>{formatPrice(item.product.price * item.quantity)}</strong>
@@ -1351,11 +1455,11 @@ export default function Home() {
             ))}
             <div className="summary-line">
               <span>Delivery</span>
-              <strong>{formatPrice(deliveryFee)}</strong>
+              <strong>{checkoutDeliveryFee === 0 && checkoutPreviewItems.length > 0 ? "Free" : formatPrice(checkoutDeliveryFee)}</strong>
             </div>
             <div className="summary-line summary-total">
               <span>Total</span>
-              <strong>{formatPrice(lastOrder?.total ?? total)}</strong>
+              <strong>{formatPrice(checkoutTotal)}</strong>
             </div>
             <a className="button secondary full-width" href={buildWhatsAppUrl(orderMessage)} target="_blank" rel="noreferrer">
               WhatsApp Us
