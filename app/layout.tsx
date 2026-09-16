@@ -36,8 +36,8 @@ export const metadata: Metadata = {
     description: "Tell Us Your Budget, We Create the Gift.",
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/thashy-logo.png",
+    shortcut: "/thashy-logo.png",
   },
 };
 

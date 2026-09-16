@@ -803,7 +803,9 @@ export default function Home() {
 
       <header className="site-header">
         <a className="brand" href="#home" aria-label="Thashy Gift Hub home">
-          <span className="brand-mark">TG</span>
+          <span className="brand-mark">
+            <img src="/thashy-logo.png" alt="" aria-hidden="true" />
+          </span>
           <span>
             <strong>Thashy Gift Hub</strong>
             <small>Tell Us Your Budget, We Create the Gift.</small>
@@ -1502,7 +1504,9 @@ export default function Home() {
       <footer className="footer">
         <div>
           <a className="brand footer-brand" href="#home">
-            <span className="brand-mark">TG</span>
+            <span className="brand-mark">
+              <img src="/thashy-logo.png" alt="" aria-hidden="true" />
+            </span>
             <span>
               <strong>Thashy Gift Hub</strong>
               <small>Tell Us Your Budget, We Create the Gift.</small>
