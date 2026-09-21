@@ -63,6 +63,7 @@ type LastOrder = {
 };
 
 const whatsappNumber = "94771234567";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const fallbackImage =
   "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=900&q=80";
 
@@ -859,7 +860,7 @@ export default function Home() {
       <header className="site-header">
         <a className="brand" href="#home" aria-label="Thashy Gift Hub home">
           <span className="brand-mark">
-            <img src="/thashy-logo.png" alt="" aria-hidden="true" />
+            <img src={`${basePath}/thashy-logo.png`} alt="" aria-hidden="true" />
           </span>
           <span>
             <strong>Thashy Gift Hub</strong>
@@ -1609,7 +1610,7 @@ export default function Home() {
         <div>
           <a className="brand footer-brand" href="#home">
             <span className="brand-mark">
-              <img src="/thashy-logo.png" alt="" aria-hidden="true" />
+              <img src={`${basePath}/thashy-logo.png`} alt="" aria-hidden="true" />
             </span>
             <span>
               <strong>Thashy Gift Hub</strong>
