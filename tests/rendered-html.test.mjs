@@ -28,6 +28,17 @@ test("exports the Thashy Gift Hub storefront for GitHub Pages", async () => {
   assert.doesNotMatch(html, /Your site is taking shape|Building your site|react-loading-skeleton/);
 });
 
+test("emits GitHub Pages assets at the deployment root", async () => {
+  const cssFiles = await readdir(
+    new URL("../dist/client/_next/static/css/", import.meta.url),
+  );
+
+  assert.ok(cssFiles.some((file) => file.endsWith(".css")));
+  await assert.rejects(
+    readdir(new URL("../dist/client/Gift-Hub/", import.meta.url)),
+  );
+});
+
 test("starter preview files were removed", async () => {
   await assert.rejects(readdir(previewRoot));
 });
